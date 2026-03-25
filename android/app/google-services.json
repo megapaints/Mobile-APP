@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "247868454022",
+    "firebase_url": "https://mega-paints-default-rtdb.firebaseio.com",
+    "project_id": "mega-paints",
+    "storage_bucket": "mega-paints.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:247868454022:android:1cdcb682d8545d3dcf0d07",
+        "android_client_info": {
+          "package_name": "com.example.megapaints"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBt_DxeDlM6RQ2gB0ZVozDt2iOo2ZaTEqY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
