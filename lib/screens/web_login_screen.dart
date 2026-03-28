@@ -13,6 +13,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:file_picker/file_picker.dart';
 
 class WebLoginScreen extends StatefulWidget {
   final String url;
@@ -355,6 +356,57 @@ class _WebLoginScreenState extends State<WebLoginScreen>
         // Grant all requested permissions (camera, microphone, etc.)
         request.grant();
       });
+
+      // Handle file upload / <input type="file"> requests from websites
+      androidController.setOnShowFileSelector(
+        (FileSelectorParams params) async {
+          debugPrint(
+              "[WebLoginScreen] 📂 File selector requested - acceptTypes: ${params.acceptTypes}, multiple: ${params.mode == FileSelectorMode.openMultiple}");
+
+          try {
+            // Try to request permissions first if needed
+            await _checkAndRequestStoragePermission();
+
+            // Determine file type filter from accept types
+            FileType fileType = FileType.any;
+            List<String>? allowedExtensions;
+
+            if (params.acceptTypes.isNotEmpty) {
+              final acceptTypes = params.acceptTypes.join(',').toLowerCase();
+              if (acceptTypes.contains('image/') || acceptTypes.contains('.jpg') || acceptTypes.contains('.png') || acceptTypes.contains('.jpeg')) {
+                fileType = FileType.image;
+              } else if (acceptTypes.contains('video/')) {
+                fileType = FileType.video;
+              } else if (acceptTypes.contains('audio/')) {
+                fileType = FileType.audio;
+              }
+            }
+
+            final result = await FilePicker.platform.pickFiles(
+              allowMultiple: params.mode == FileSelectorMode.openMultiple,
+              type: fileType,
+              allowedExtensions: allowedExtensions,
+            );
+
+            if (result != null && result.files.isNotEmpty) {
+              final paths = result.files
+                  .where((file) => file.path != null)
+                  .map((file) => Uri.file(file.path!).toString())
+                  .toList();
+              debugPrint(
+                  "[WebLoginScreen] ✅ Files selected: $paths");
+              return paths;
+            }
+
+            debugPrint("[WebLoginScreen] ⚠️ File selection cancelled");
+            return [];
+          } catch (e) {
+            debugPrint("[WebLoginScreen] ❌ File picker error: $e");
+            _logToast("❌ Could not open file picker");
+            return [];
+          }
+        },
+      );
 
       // Handle geolocation permission requests from websites
       androidController.setGeolocationPermissionsPromptCallbacks(
