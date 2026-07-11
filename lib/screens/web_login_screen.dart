@@ -372,13 +372,23 @@ class _WebLoginScreenState extends State<WebLoginScreen>
             List<String>? allowedExtensions;
 
             if (params.acceptTypes.isNotEmpty) {
-              final acceptTypes = params.acceptTypes.join(',').toLowerCase();
-              if (acceptTypes.contains('image/') || acceptTypes.contains('.jpg') || acceptTypes.contains('.png') || acceptTypes.contains('.jpeg')) {
+              final acceptTypesStr = params.acceptTypes.join(',').toLowerCase();
+              
+              bool hasImage = acceptTypesStr.contains('image/') || acceptTypesStr.contains('.jpg') || acceptTypesStr.contains('.png') || acceptTypesStr.contains('.jpeg');
+              bool hasVideo = acceptTypesStr.contains('video/') || acceptTypesStr.contains('.mp4') || acceptTypesStr.contains('.mov');
+              bool hasAudio = acceptTypesStr.contains('audio/') || acceptTypesStr.contains('.mp3') || acceptTypesStr.contains('.wav');
+              bool hasDoc = acceptTypesStr.contains('application/') || acceptTypesStr.contains('text/') || acceptTypesStr.contains('.pdf') || acceptTypesStr.contains('.doc') || acceptTypesStr.contains('.csv') || acceptTypesStr.contains('.xls');
+
+              if (hasDoc) {
+                fileType = FileType.any;
+              } else if (hasImage && !hasVideo && !hasAudio) {
                 fileType = FileType.image;
-              } else if (acceptTypes.contains('video/')) {
+              } else if (hasVideo && !hasImage && !hasAudio) {
                 fileType = FileType.video;
-              } else if (acceptTypes.contains('audio/')) {
+              } else if (hasAudio && !hasImage && !hasVideo) {
                 fileType = FileType.audio;
+              } else if (hasImage || hasVideo || hasAudio) {
+                fileType = FileType.media;
               }
             }
 
