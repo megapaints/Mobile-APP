@@ -98,32 +98,20 @@ class _HomeScreenState extends State<HomeScreen>
   }
 
   Future<void> _navigateToWebView(String url) async {
-    // Check permissions before navigation
+    // Request any missing permissions dynamically without blocking navigation
     final permissions = [
       Permission.camera,
       Permission.notification,
       Permission.locationWhenInUse,
     ];
 
-    bool allGranted = true;
     for (var permission in permissions) {
-      if (!await permission.isGranted) {
-        allGranted = false;
-        break;
-      }
-    }
-
-    if (!allGranted) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text(
-                'Missing required permissions. Please grant them in settings or restart the app.'),
-            backgroundColor: Colors.redAccent,
-          ),
-        );
-      }
-      return;
+      try {
+        final status = await permission.status;
+        if (!status.isGranted) {
+          await permission.request();
+        }
+      } catch (_) {}
     }
 
     if (!mounted) return;
