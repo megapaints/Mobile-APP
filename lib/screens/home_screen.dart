@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'web_login_screen.dart';
+import '../services/auth_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
 
@@ -15,12 +16,14 @@ class _HomeScreenState extends State<HomeScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
+  Map<String, dynamic>? _currentUser;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     _checkLocationService();
+    _loadCurrentUser();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -34,6 +37,57 @@ class _HomeScreenState extends State<HomeScreen>
     ).animate(
         CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
     _animationController.forward();
+  }
+
+  Future<void> _loadCurrentUser() async {
+    final user = await AuthService.getCurrentUser();
+    if (mounted) {
+      setState(() {
+        _currentUser = user;
+      });
+    }
+  }
+
+  Future<void> _handleLogout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF16213E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Text(
+          'Log Out',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Are you sure you want to log out of Mega Paints? You will need to sign in again to access any portal.',
+          style: TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Log Out'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await AuthService.logout();
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+      }
+    }
   }
 
   @override
@@ -152,7 +206,105 @@ class _HomeScreenState extends State<HomeScreen>
                         Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            const SizedBox(height: 40),
+                            const SizedBox(height: 16),
+                            // Top Bar with User Info & Logout
+                            if (_currentUser != null) ...[
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                          horizontal: 14, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withAlpha(20),
+                                        borderRadius: BorderRadius.circular(20),
+                                        border: Border.all(
+                                          color: Colors.white.withAlpha(30),
+                                        ),
+                                      ),
+                                      child: Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          const Icon(
+                                            Icons.person_rounded,
+                                            color: Color(0xFF667eea),
+                                            size: 18,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Flexible(
+                                            child: Text(
+                                              _currentUser?['name']?.toString().isNotEmpty == true
+                                                  ? _currentUser!['name']
+                                                  : (_currentUser?['username'] ?? 'Logged In'),
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 13,
+                                                fontWeight: FontWeight.w600,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          if (_currentUser?['designation'] != null ||
+                                              _currentUser?['designationName'] != null) ...[
+                                            const SizedBox(width: 6),
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                  horizontal: 8, vertical: 2),
+                                              decoration: BoxDecoration(
+                                                color: const Color(0xFF667eea).withAlpha(60),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                              ),
+                                              child: Text(
+                                                (_currentUser?['designation'] is Map
+                                                        ? _currentUser!['designation']['name']
+                                                        : _currentUser?['designationName']) ??
+                                                    '',
+                                                style: const TextStyle(
+                                                  color: Colors.white70,
+                                                  fontSize: 10,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  // Logout Button
+                                  Material(
+                                    color: Colors.transparent,
+                                    child: InkWell(
+                                      onTap: _handleLogout,
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Container(
+                                        padding: const EdgeInsets.all(10),
+                                        decoration: BoxDecoration(
+                                          color: Colors.redAccent.withAlpha(35),
+                                          borderRadius:
+                                              BorderRadius.circular(16),
+                                          border: Border.all(
+                                            color: Colors.redAccent.withAlpha(80),
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.logout_rounded,
+                                          color: Colors.redAccent,
+                                          size: 18,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 24),
+                            ] else ...[
+                              const SizedBox(height: 20),
+                            ],
+
                             // Header Section
                             FadeTransition(
                               opacity: _fadeAnimation,
@@ -176,7 +328,7 @@ class _HomeScreenState extends State<HomeScreen>
                                         ),
                                       ),
                                     ),
-                                    const SizedBox(height: 24),
+                                    const SizedBox(height: 20),
                                     // Title
                                     const Center(
                                       child: Text(
@@ -193,7 +345,7 @@ class _HomeScreenState extends State<HomeScreen>
                                 ),
                               ),
                             ),
-                            const SizedBox(height: 50),
+                            const SizedBox(height: 36),
                             // Options Grid
                             FadeTransition(
                               opacity: _fadeAnimation,

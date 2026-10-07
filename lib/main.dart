@@ -4,7 +4,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
+import 'screens/login_screen.dart';
 import 'screens/permissions_screen.dart';
+import 'services/auth_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -86,6 +88,7 @@ class MyApp extends StatelessWidget {
       ),
       home: const SplashScreen(),
       routes: {
+        '/login': (context) => const LoginScreen(),
         '/home': (context) => const HomeScreen(),
         '/permissions': (context) => const PermissionsScreenWrapper(),
       },
@@ -117,10 +120,18 @@ class _SplashScreenState extends State<SplashScreen> {
 
     if (!mounted) return;
 
-    if (permissionsCompleted) {
+    if (!permissionsCompleted) {
+      Navigator.of(context).pushReplacementNamed('/permissions');
+      return;
+    }
+
+    final loggedIn = await AuthService.isLoggedIn();
+    if (!mounted) return;
+
+    if (loggedIn) {
       Navigator.of(context).pushReplacementNamed('/home');
     } else {
-      Navigator.of(context).pushReplacementNamed('/permissions');
+      Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 
@@ -145,9 +156,13 @@ class PermissionsScreenWrapper extends StatelessWidget {
         final prefs = await SharedPreferences.getInstance();
         await prefs.setBool('permissions_completed', true);
 
+        if (!context.mounted) return;
+
+        final loggedIn = await AuthService.isLoggedIn();
         if (context.mounted) {
+          final targetRoute = loggedIn ? '/home' : '/login';
           Navigator.of(context)
-              .pushNamedAndRemoveUntil('/home', (route) => false);
+              .pushNamedAndRemoveUntil(targetRoute, (route) => false);
         }
       },
     );

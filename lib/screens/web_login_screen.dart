@@ -8,6 +8,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
 import '../services/push_token_service.dart';
+import '../services/auth_service.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:open_filex/open_filex.dart';
@@ -32,6 +33,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
   bool _isLoading = true; // 👈 track WebView loading state
   bool _isFabExpanded = false; // Track FAB expansion state
   late String _currentUrl; // Track the current website URL
+  String? _authJson; // Cached auth session JSON for auto-login injection
 
   // FAB position (draggable) - initialized in initState after getting screen size
   double _fabX = 16; // distance from right edge
@@ -69,6 +71,14 @@ class _WebLoginScreenState extends State<WebLoginScreen>
   void initState() {
     super.initState();
     _currentUrl = widget.url; // Initialize with the starting URL
+    
+    // Preload auth session from SharedPreferences
+    AuthService.getAuthJson().then((val) {
+      if (mounted) {
+        _authJson = val;
+      }
+    });
+
     _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..addJavaScriptChannel(
@@ -169,8 +179,10 @@ class _WebLoginScreenState extends State<WebLoginScreen>
             setState(() => _isLoading = true);
             // Inject early script for reload interception
             _injectEarlyScript();
+            // Automatically inject auth session
+            _injectAuthSession();
           },
-          onPageFinished: (url) {
+          onPageFinished: (url) async {
             //  _logToast("🌍 Page finished loading: $url");
 
             // Update current URL
@@ -178,6 +190,9 @@ class _WebLoginScreenState extends State<WebLoginScreen>
 
             // Inject blob click listener
             _injectBlobListener();
+
+            // Ensure auth session is injected and synced
+            await _injectAuthSession();
 
             // hide loading screen
             setState(() => _isLoading = false);
@@ -197,6 +212,42 @@ class _WebLoginScreenState extends State<WebLoginScreen>
 
     // Configure Android WebView to handle permission requests (camera, microphone, etc.)
     _configureAndroidPermissions();
+  }
+
+  /// Automatically inject the unified auth session into website localStorage
+  Future<void> _injectAuthSession() async {
+    try {
+      final authJson = _authJson ?? await AuthService.getAuthJson();
+      if (authJson == null || authJson.isEmpty) return;
+      _authJson = authJson;
+
+      final escaped = jsonEncode(authJson);
+      final js = """
+        (function() {
+          try {
+            var current = window.localStorage.getItem('auth');
+            if (!current || current === 'null' || current === '""' || current === '{}') {
+              console.log('[Flutter] Auto-injecting unified auth session into localStorage');
+              window.localStorage.setItem('auth', $escaped);
+              
+              // If page currently redirected to login screen, redirect to root
+              if (window.location.hash.indexOf('login') !== -1) {
+                console.log('[Flutter] Redirecting from login hash to root');
+                window.location.hash = '#/';
+              } else if (window.location.pathname.indexOf('login') !== -1) {
+                console.log('[Flutter] Redirecting from login pathname to root');
+                window.location.href = window.location.origin + '/#/';
+              }
+            }
+          } catch(e) {
+            console.error('[Flutter] Failed to set auth session:', e);
+          }
+        })();
+      """;
+      await _controller.runJavaScript(js);
+    } catch (e) {
+      debugPrint("[WebLoginScreen] Error injecting auth session: $e");
+    }
   }
 
   /// Inject early script to set up reload bridge
@@ -744,13 +795,12 @@ class _WebLoginScreenState extends State<WebLoginScreen>
 
   Future<void> _checkLoggedInUser() async {
     try {
-      final jsCode = "window.localStorage.getItem('auth');";
+      const jsCode = "window.localStorage.getItem('auth');";
       final result = await _controller.runJavaScriptReturningResult(jsCode);
+      final resultStr = result.toString();
 
-      if (result != null && result.toString().isNotEmpty) {
-        String raw = result.toString();
-
-        // _logToast("📦 Raw auth: $raw");
+      if (resultStr.isNotEmpty && resultStr != 'null') {
+        String raw = resultStr;
 
         if (raw.startsWith('"') && raw.endsWith('"')) {
           raw = raw.substring(1, raw.length - 1);
@@ -761,19 +811,30 @@ class _WebLoginScreenState extends State<WebLoginScreen>
 
         final userId = data['user']?['id']?.toString() ?? "";
 
-        if (userId.isNotEmpty && !_userProcessed) {
-          _userProcessed = true;
-          _authCheckTimer?.cancel();
-          // _logToast("✅ User logged in: $userId");
-          await _onLoginSuccess(userId);
-        } else {
-          // _logToast("⚠️ No userId found in auth data");
+        if (userId.isNotEmpty) {
+          // Keep session cache and SharedPreferences updated
+          _authJson = raw;
+          await AuthService.saveAuthJson(raw);
+
+          if (!_userProcessed) {
+            _userProcessed = true;
+            _authCheckTimer?.cancel();
+            await _onLoginSuccess(userId);
+          }
         }
       } else {
-        // _logToast("⚠️ No auth data found in localStorage");
+        // If the user was logged in previously and web app cleared auth (logout), detect logout
+        if (_userProcessed && (result.toString() == 'null' || result.toString().isEmpty)) {
+          debugPrint("[WebLoginScreen] 🚪 Web logout detected from WebView");
+          _authCheckTimer?.cancel();
+          await AuthService.logout();
+          if (mounted) {
+            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+          }
+        }
       }
     } catch (e) {
-      //_logToast("❌ Error parsing auth JSON: $e");
+      // Error parsing auth JSON
     }
   }
 
