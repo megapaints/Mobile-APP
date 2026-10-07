@@ -880,6 +880,15 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     setState(() => _isFabExpanded = !_isFabExpanded);
   }
 
+  String get _currentSiteName {
+    for (var site in _websites) {
+      if (_currentUrl.contains(Uri.parse(site['url'] as String).host)) {
+        return site['name'] as String;
+      }
+    }
+    return 'Portal';
+  }
+
   @override
   Widget build(BuildContext context) {
     final screenSize = MediaQuery.of(context).size;
@@ -896,86 +905,280 @@ class _WebLoginScreenState extends State<WebLoginScreen>
         }
       },
       child: Scaffold(
-        body: Stack(
-          children: [
-            SafeArea(child: WebViewWidget(controller: _controller)),
-            if (_isLoading)
-              Container(
-                color: Colors.white, // background color while loading
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // 👇 Your app PNG icon
-                      Image.asset(
-                        "assets/logopng.png",
-                        width: 100,
-                        height: 100,
-                      ),
-                      const SizedBox(height: 30),
+        backgroundColor: const Color(0xFF0D1117),
+        body: SafeArea(
+          child: Column(
+            children: [
+              // Top Portal Control Bar
+              _buildTopPortalBar(),
 
-                      const SizedBox(height: 30),
+              // WebView Content + Overlays
+              Expanded(
+                child: Stack(
+                  children: [
+                    WebViewWidget(controller: _controller),
 
-                      const CircularProgressIndicator(), // optional
-                    ],
-                  ),
-                ),
-              ),
+                    // Modern Dark Loading Overlay
+                    if (_isLoading) _buildLoadingOverlay(),
 
-            // Overlay when FAB is expanded
-            if (_isFabExpanded)
-              GestureDetector(
-                onTap: _toggleFab,
-                child: Container(
-                  color: Colors.black54,
-                ),
-              ),
-
-            // Draggable Floating Action Button
-            Positioned(
-              right: _fabX,
-              bottom: _fabY,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  // Website options (shown when expanded)
-                  if (_isFabExpanded) ..._buildWebsiteOptions(),
-
-                  const SizedBox(height: 8),
-
-                  // Draggable Main FAB
-                  GestureDetector(
-                    onPanUpdate: (details) {
-                      setState(() {
-                        // Update position based on drag
-                        _fabX -= details.delta.dx;
-                        _fabY -= details.delta.dy;
-
-                        // Keep within screen bounds
-                        _fabX = _fabX.clamp(0, screenSize.width - fabSize - 16);
-                        _fabY =
-                            _fabY.clamp(0, screenSize.height - fabSize - 100);
-                      });
-                    },
-                    child: FloatingActionButton(
-                      onPressed: _toggleFab,
-                      backgroundColor: _isFabExpanded
-                          ? Colors.grey.shade700
-                          : const Color(0xFF1A237E),
-                      child: AnimatedRotation(
-                        turns: _isFabExpanded ? 0.125 : 0, // 45 degrees
-                        duration: const Duration(milliseconds: 200),
-                        child: Icon(
-                          _isFabExpanded
-                              ? Icons.close
-                              : Icons.swap_horiz_rounded,
-                          color: Colors.white,
+                    // Overlay when FAB is expanded
+                    if (_isFabExpanded)
+                      GestureDetector(
+                        onTap: _toggleFab,
+                        child: Container(
+                          color: Colors.black.withOpacity(0.65),
                         ),
                       ),
+
+                    // Draggable Floating Action Button
+                    Positioned(
+                      right: _fabX,
+                      bottom: _fabY,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          // Website options (shown when expanded)
+                          if (_isFabExpanded) ..._buildWebsiteOptions(),
+
+                          const SizedBox(height: 8),
+
+                          // Draggable Main FAB
+                          GestureDetector(
+                            onPanUpdate: (details) {
+                              setState(() {
+                                _fabX -= details.delta.dx;
+                                _fabY -= details.delta.dy;
+
+                                _fabX = _fabX.clamp(
+                                    0, screenSize.width - fabSize - 16);
+                                _fabY = _fabY.clamp(
+                                    0, screenSize.height - fabSize - 120);
+                              });
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: const Color(0xFF6366F1).withOpacity(0.4),
+                                    blurRadius: 16,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ],
+                              ),
+                              child: FloatingActionButton(
+                                onPressed: _toggleFab,
+                                elevation: 0,
+                                backgroundColor: _isFabExpanded
+                                    ? const Color(0xFF374151)
+                                    : const Color(0xFF4F46E5),
+                                child: AnimatedRotation(
+                                  turns: _isFabExpanded ? 0.125 : 0,
+                                  duration: const Duration(milliseconds: 200),
+                                  child: Icon(
+                                    _isFabExpanded
+                                        ? Icons.close
+                                        : Icons.swap_horiz_rounded,
+                                    color: Colors.white,
+                                    size: 26,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// Top Portal Control Bar with Back, Title, Reload and Progress Bar
+  Widget _buildTopPortalBar() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF161B22),
+        border: Border(
+          bottom: BorderSide(
+            color: Colors.white.withOpacity(0.08),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            child: Row(
+              children: [
+                // Back Button
+                IconButton(
+                  icon: const Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: Colors.white70,
+                    size: 18,
+                  ),
+                  tooltip: 'Go Back',
+                  onPressed: () async {
+                    if (await _controller.canGoBack()) {
+                      await _controller.goBack();
+                    } else if (mounted) {
+                      Navigator.of(context).pop();
+                    }
+                  },
+                ),
+
+                // Portal Title Pill
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0D1117),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: Colors.white.withOpacity(0.07),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.lock_rounded,
+                          color: Color(0xFF10B981),
+                          size: 13,
+                        ),
+                        const SizedBox(width: 6),
+                        Flexible(
+                          child: Text(
+                            'Mega Paints • $_currentSiteName',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              letterSpacing: 0.3,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                ),
+
+                const SizedBox(width: 8),
+
+                // Reload Button
+                IconButton(
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                    color: Colors.white70,
+                    size: 20,
+                  ),
+                  tooltip: 'Reload Page',
+                  onPressed: () {
+                    _controller.reload();
+                  },
+                ),
+
+                // Home / Dashboard Button
+                IconButton(
+                  icon: const Icon(
+                    Icons.dashboard_rounded,
+                    color: Color(0xFF818CF8),
+                    size: 20,
+                  ),
+                  tooltip: 'Main Hub',
+                  onPressed: () {
+                    Navigator.of(context).pop();
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          // Slim Loading Indicator
+          if (_isLoading)
+            const SizedBox(
+              height: 2.5,
+              child: LinearProgressIndicator(
+                backgroundColor: Colors.transparent,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// Modern Dark Loading Overlay
+  Widget _buildLoadingOverlay() {
+    return Container(
+      color: const Color(0xFF0D1117),
+      child: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Glowing Logo Container
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.05),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: Colors.white.withOpacity(0.1),
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: const Color(0xFF4F46E5).withOpacity(0.2),
+                    blurRadius: 30,
+                    offset: const Offset(0, 10),
+                  ),
                 ],
+              ),
+              child: Image.asset(
+                "assets/logopng.png",
+                width: 72,
+                height: 72,
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Portal Connection Text
+            Text(
+              'Connecting to $_currentSiteName...',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              'Injecting unified SSO session',
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.5),
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 26),
+
+            // Progress Indicator
+            const SizedBox(
+              width: 32,
+              height: 32,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.8,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
               ),
             ),
           ],
@@ -984,51 +1187,107 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     );
   }
 
-  /// Build the website option buttons
+  /// Build the website switcher buttons
   List<Widget> _buildWebsiteOptions() {
     return _websites.map((site) {
-      final isCurrentSite = _currentUrl == site['url'];
+      final isCurrentSite = _currentUrl.contains(
+        Uri.parse(site['url'] as String).host,
+      );
 
       return Padding(
         padding: const EdgeInsets.only(bottom: 12),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.end,
           children: [
-            // Label
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(8),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withAlpha(40),
-                    blurRadius: 8,
-                    offset: const Offset(0, 2),
+            // Modern Label Card
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: isCurrentSite ? null : () => _switchWebsite(site['url']),
+                borderRadius: BorderRadius.circular(14),
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF161B22),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: isCurrentSite
+                          ? (site['color'] as Color).withOpacity(0.6)
+                          : Colors.white.withOpacity(0.1),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.35),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Text(
-                site['name'],
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w600,
-                  color: isCurrentSite ? Colors.grey : Colors.black87,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        site['name'],
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isCurrentSite
+                              ? const Color(0xFFA5B4FC)
+                              : Colors.white,
+                        ),
+                      ),
+                      if (isCurrentSite) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text(
+                            'Active',
+                            style: TextStyle(
+                              color: Color(0xFF34D399),
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 12),
+
             // Mini FAB
-            FloatingActionButton.small(
-              heroTag: site['name'],
-              onPressed:
-                  isCurrentSite ? null : () => _switchWebsite(site['url']),
-              backgroundColor:
-                  isCurrentSite ? Colors.grey.shade400 : site['color'] as Color,
-              child: Icon(
-                site['icon'] as IconData,
-                color: Colors.white,
-                size: 20,
+            Container(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: (site['color'] as Color).withOpacity(0.35),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: FloatingActionButton.small(
+                heroTag: site['name'],
+                onPressed:
+                    isCurrentSite ? null : () => _switchWebsite(site['url']),
+                backgroundColor: isCurrentSite
+                    ? Colors.grey.shade700
+                    : site['color'] as Color,
+                elevation: 0,
+                child: Icon(
+                  site['icon'] as IconData,
+                  color: Colors.white,
+                  size: 20,
+                ),
               ),
             ),
           ],
@@ -1037,3 +1296,4 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     }).toList();
   }
 }
+
