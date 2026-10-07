@@ -44,20 +44,17 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     {
       'name': 'Delivery',
       'url': 'https://delivery.megapaints.org',
-      'icon': Icons.local_shipping_rounded,
-      'color': Color(0xFF667eea),
+      'icon': Icons.local_shipping_outlined,
     },
     {
       'name': 'Inventory',
       'url': 'https://qr-stock-management.megapaints.org',
-      'icon': Icons.inventory_2_rounded,
-      'color': Color(0xFF11998e),
+      'icon': Icons.inventory_2_outlined,
     },
     {
       'name': 'Invoice',
       'url': 'https://invoice.megapaints.org',
-      'icon': Icons.receipt_long_rounded,
-      'color': Color(0xFFf093fb),
+      'icon': Icons.receipt_long_outlined,
     },
   ];
 
@@ -926,11 +923,11 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                       GestureDetector(
                         onTap: _toggleFab,
                         child: Container(
-                          color: Colors.black.withOpacity(0.65),
+                          color: Colors.black.withOpacity(0.5),
                         ),
                       ),
 
-                    // Draggable Floating Action Button
+                    // Draggable Clean Floating Switcher Button
                     Positioned(
                       right: _fabX,
                       bottom: _fabY,
@@ -938,12 +935,10 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                         mainAxisSize: MainAxisSize.min,
                         crossAxisAlignment: CrossAxisAlignment.end,
                         children: [
-                          // Website options (shown when expanded)
-                          if (_isFabExpanded) ..._buildWebsiteOptions(),
+                          // Switcher menu card (shown when expanded)
+                          if (_isFabExpanded) _buildWebsiteOptionsMenu(),
 
-                          const SizedBox(height: 8),
-
-                          // Draggable Main FAB
+                          // Draggable Main FAB (Compact, Professional Dark Slate)
                           GestureDetector(
                             onPanUpdate: (details) {
                               setState(() {
@@ -953,35 +948,44 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                                 _fabX = _fabX.clamp(
                                     0, screenSize.width - fabSize - 16);
                                 _fabY = _fabY.clamp(
-                                    0, screenSize.height - fabSize - 120);
+                                    0, screenSize.height - fabSize - 100);
                               });
                             },
-                            child: Container(
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: const Color(0xFF6366F1).withOpacity(0.4),
-                                    blurRadius: 16,
-                                    offset: const Offset(0, 4),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _toggleFab,
+                                borderRadius: BorderRadius.circular(24),
+                                child: Container(
+                                  width: 48,
+                                  height: 48,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF1E293B),
+                                    borderRadius: BorderRadius.circular(24),
+                                    border: Border.all(
+                                      color: const Color(0xFF334155),
+                                      width: 1.2,
+                                    ),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.black.withOpacity(0.3),
+                                        blurRadius: 10,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
                                   ),
-                                ],
-                              ),
-                              child: FloatingActionButton(
-                                onPressed: _toggleFab,
-                                elevation: 0,
-                                backgroundColor: _isFabExpanded
-                                    ? const Color(0xFF374151)
-                                    : const Color(0xFF4F46E5),
-                                child: AnimatedRotation(
-                                  turns: _isFabExpanded ? 0.125 : 0,
-                                  duration: const Duration(milliseconds: 200),
-                                  child: Icon(
-                                    _isFabExpanded
-                                        ? Icons.close
-                                        : Icons.swap_horiz_rounded,
-                                    color: Colors.white,
-                                    size: 26,
+                                  child: Center(
+                                    child: AnimatedRotation(
+                                      turns: _isFabExpanded ? 0.125 : 0,
+                                      duration: const Duration(milliseconds: 200),
+                                      child: Icon(
+                                        _isFabExpanded
+                                            ? Icons.close_rounded
+                                            : Icons.swap_horiz_rounded,
+                                        color: Colors.white,
+                                        size: 22,
+                                      ),
+                                    ),
                                   ),
                                 ),
                               ),
@@ -1003,11 +1007,11 @@ class _WebLoginScreenState extends State<WebLoginScreen>
   /// Top Portal Control Bar with Back, Title, Reload and Progress Bar
   Widget _buildTopPortalBar() {
     return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF161B22),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F172A),
         border: Border(
           bottom: BorderSide(
-            color: Colors.white.withOpacity(0.08),
+            color: Color(0xFF1E293B),
             width: 1,
           ),
         ),
@@ -1016,15 +1020,15 @@ class _WebLoginScreenState extends State<WebLoginScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               children: [
                 // Back Button
                 IconButton(
                   icon: const Icon(
                     Icons.arrow_back_ios_new_rounded,
-                    color: Colors.white70,
-                    size: 18,
+                    color: Color(0xFF94A3B8),
+                    size: 16,
                   ),
                   tooltip: 'Go Back',
                   onPressed: () async {
@@ -1042,18 +1046,18 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                     padding: const EdgeInsets.symmetric(
                         horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0D1117),
-                      borderRadius: BorderRadius.circular(16),
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: Colors.white.withOpacity(0.07),
+                        color: const Color(0xFF334155),
                       ),
                     ),
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(
-                          Icons.lock_rounded,
-                          color: Color(0xFF10B981),
+                          Icons.lock_outline_rounded,
+                          color: Color(0xFF38BDF8),
                           size: 13,
                         ),
                         const SizedBox(width: 6),
@@ -1064,7 +1068,6 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                               color: Colors.white,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1074,27 +1077,27 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                   ),
                 ),
 
-                const SizedBox(width: 8),
+                const SizedBox(width: 4),
 
                 // Reload Button
                 IconButton(
                   icon: const Icon(
                     Icons.refresh_rounded,
-                    color: Colors.white70,
-                    size: 20,
+                    color: Color(0xFF94A3B8),
+                    size: 19,
                   ),
-                  tooltip: 'Reload Page',
+                  tooltip: 'Reload',
                   onPressed: () {
                     _controller.reload();
                   },
                 ),
 
-                // Home / Dashboard Button
+                // Hub / Exit Button
                 IconButton(
                   icon: const Icon(
-                    Icons.dashboard_rounded,
-                    color: Color(0xFF818CF8),
-                    size: 20,
+                    Icons.grid_view_rounded,
+                    color: Color(0xFF94A3B8),
+                    size: 18,
                   ),
                   tooltip: 'Main Hub',
                   onPressed: () {
@@ -1108,10 +1111,10 @@ class _WebLoginScreenState extends State<WebLoginScreen>
           // Slim Loading Indicator
           if (_isLoading)
             const SizedBox(
-              height: 2.5,
+              height: 2,
               child: LinearProgressIndicator(
                 backgroundColor: Colors.transparent,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
               ),
             ),
         ],
@@ -1119,66 +1122,53 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     );
   }
 
-  /// Modern Dark Loading Overlay
+  /// Modern Clean Loading Overlay
   Widget _buildLoadingOverlay() {
     return Container(
-      color: const Color(0xFF0D1117),
+      color: const Color(0xFF0F172A),
       child: Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Glowing Logo Container
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.05),
-                borderRadius: BorderRadius.circular(24),
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: Colors.white.withOpacity(0.1),
+                  color: const Color(0xFF334155),
                 ),
-                boxShadow: [
-                  BoxShadow(
-                    color: const Color(0xFF4F46E5).withOpacity(0.2),
-                    blurRadius: 30,
-                    offset: const Offset(0, 10),
-                  ),
-                ],
               ),
               child: Image.asset(
                 "assets/logopng.png",
-                width: 72,
-                height: 72,
+                width: 56,
+                height: 56,
               ),
             ),
-            const SizedBox(height: 24),
-
-            // Portal Connection Text
+            const SizedBox(height: 20),
             Text(
-              'Connecting to $_currentSiteName...',
+              'Loading $_currentSiteName...',
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              'Injecting unified SSO session',
+            const SizedBox(height: 4),
+            const Text(
+              'Connecting via Single Sign-On',
               style: TextStyle(
-                color: Colors.white.withOpacity(0.5),
+                color: Color(0xFF94A3B8),
                 fontSize: 12,
               ),
             ),
-            const SizedBox(height: 26),
-
-            // Progress Indicator
+            const SizedBox(height: 20),
             const SizedBox(
-              width: 32,
-              height: 32,
+              width: 24,
+              height: 24,
               child: CircularProgressIndicator(
-                strokeWidth: 2.8,
-                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6366F1)),
+                strokeWidth: 2.2,
+                valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
               ),
             ),
           ],
@@ -1187,113 +1177,97 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     );
   }
 
-  /// Build the website switcher buttons
-  List<Widget> _buildWebsiteOptions() {
-    return _websites.map((site) {
-      final isCurrentSite = _currentUrl.contains(
-        Uri.parse(site['url'] as String).host,
-      );
-
-      return Padding(
-        padding: const EdgeInsets.only(bottom: 12),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.end,
+  /// Clean, Professional Switcher Menu Card (Replaces colorful floating buttons)
+  Widget _buildWebsiteOptionsMenu() {
+    return Container(
+      width: 210,
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF334155)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Modern Label Card
-            Material(
-              color: Colors.transparent,
-              child: InkWell(
-                onTap: isCurrentSite ? null : () => _switchWebsite(site['url']),
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF161B22),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(
-                      color: isCurrentSite
-                          ? (site['color'] as Color).withOpacity(0.6)
-                          : Colors.white.withOpacity(0.1),
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.35),
-                        blurRadius: 10,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        site['name'],
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              color: const Color(0xFF0F172A),
+              child: const Text(
+                'SWITCH PORTAL',
+                style: TextStyle(
+                  color: Color(0xFF94A3B8),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+            ..._websites.map((site) {
+              final isCurrentSite = _currentUrl.contains(
+                Uri.parse(site['url'] as String).host,
+              );
+              return Material(
+                color: isCurrentSite
+                    ? const Color(0xFF0F172A).withOpacity(0.6)
+                    : Colors.transparent,
+                child: InkWell(
+                  onTap: isCurrentSite
+                      ? null
+                      : () => _switchWebsite(site['url'] as String),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 14, vertical: 12),
+                    child: Row(
+                      children: [
+                        Icon(
+                          site['icon'] as IconData,
+                          size: 18,
                           color: isCurrentSite
-                              ? const Color(0xFFA5B4FC)
-                              : Colors.white,
+                              ? const Color(0xFF38BDF8)
+                              : const Color(0xFF94A3B8),
                         ),
-                      ),
-                      if (isCurrentSite) ...[
-                        const SizedBox(width: 8),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF10B981).withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text(
-                            'Active',
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            site['name'] as String,
                             style: TextStyle(
-                              color: Color(0xFF34D399),
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
+                              fontSize: 13,
+                              fontWeight: isCurrentSite
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
+                              color: isCurrentSite
+                                  ? Colors.white
+                                  : const Color(0xFFCBD5E1),
                             ),
                           ),
                         ),
+                        if (isCurrentSite)
+                          const Icon(
+                            Icons.check_rounded,
+                            size: 16,
+                            color: Color(0xFF38BDF8),
+                          ),
                       ],
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-            const SizedBox(width: 12),
-
-            // Mini FAB
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: (site['color'] as Color).withOpacity(0.35),
-                    blurRadius: 10,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: FloatingActionButton.small(
-                heroTag: site['name'],
-                onPressed:
-                    isCurrentSite ? null : () => _switchWebsite(site['url']),
-                backgroundColor: isCurrentSite
-                    ? Colors.grey.shade700
-                    : site['color'] as Color,
-                elevation: 0,
-                child: Icon(
-                  site['icon'] as IconData,
-                  color: Colors.white,
-                  size: 20,
-                ),
-              ),
-            ),
+              );
+            }),
           ],
         ),
-      );
-    }).toList();
+      ),
+    );
   }
 }
 
