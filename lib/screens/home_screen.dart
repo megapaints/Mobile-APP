@@ -120,6 +120,10 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (!mounted) return;
 
+    await AuthService.setLastOpenedWebsite(url);
+
+    if (!mounted) return;
+
     Navigator.push(
       context,
       MaterialPageRoute(

@@ -68,6 +68,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
   void initState() {
     super.initState();
     _currentUrl = widget.url; // Initialize with the starting URL
+    AuthService.setLastOpenedWebsite(widget.url);
     
     // Preload auth session from SharedPreferences
     AuthService.getAuthJson().then((val) {
@@ -864,6 +865,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
 
   /// Switch to a different website
   void _switchWebsite(String url) {
+    AuthService.setLastOpenedWebsite(url);
     setState(() {
       _isLoading = true;
       _isFabExpanded = false;

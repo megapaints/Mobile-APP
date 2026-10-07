@@ -105,9 +105,31 @@ class AuthService {
     await prefs.setString(_authKey, rawJson);
   }
 
+  static const String _lastWebsiteKey = 'last_opened_website_url';
+
+  /// Get the last opened website URL
+  static Future<String?> getLastOpenedWebsite() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_lastWebsiteKey);
+  }
+
+  /// Save the last opened website URL
+  static Future<void> setLastOpenedWebsite(String url) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_lastWebsiteKey, url);
+  }
+
+  /// Clear the last opened website URL
+  static Future<void> clearLastOpenedWebsite() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_lastWebsiteKey);
+  }
+
   /// Log out and clear stored session
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_authKey);
+    await prefs.remove(_lastWebsiteKey);
   }
 }
+

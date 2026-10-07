@@ -6,6 +6,7 @@ import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/permissions_screen.dart';
+import 'screens/web_login_screen.dart';
 import 'services/auth_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
@@ -129,7 +130,26 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (loggedIn) {
-      Navigator.of(context).pushReplacementNamed('/home');
+      final lastUrl = await AuthService.getLastOpenedWebsite();
+      if (!mounted) return;
+
+      if (lastUrl != null && lastUrl.isNotEmpty) {
+        // Mount HomeScreen underneath seamlessly so returning to hub works naturally
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, anim1, anim2) => const HomeScreen(),
+            transitionDuration: Duration.zero,
+          ),
+        );
+        // Automatically open the last opened website
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => WebLoginScreen(url: lastUrl),
+          ),
+        );
+      } else {
+        Navigator.of(context).pushReplacementNamed('/home');
+      }
     } else {
       Navigator.of(context).pushReplacementNamed('/login');
     }
