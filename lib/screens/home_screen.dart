@@ -199,21 +199,25 @@ class _HomeScreenState extends State<HomeScreen>
                 _buildUserProfileBar(),
                 const SizedBox(height: 24),
 
-                // Brand Header
-                _buildBrandHeader(),
-                const SizedBox(height: 28),
-
-                // Section Title
+                // Section Header
                 const Text(
-                  'PORTALS',
+                  'Select Portal',
                   style: TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: 1.2,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                    letterSpacing: 0.2,
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 4),
+                const Text(
+                  'Choose a workspace to continue',
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: Color(0xFF94A3B8),
+                  ),
+                ),
+                const SizedBox(height: 20),
 
                 // Unified Module Cards (Clean & Consistent Slate Design)
                 _buildModuleCard(
@@ -246,7 +250,7 @@ class _HomeScreenState extends State<HomeScreen>
                 // Clean Footer
                 const Center(
                   child: Text(
-                    '© 2026 Mega Paints • All rights reserved',
+                    'All rights reserved',
                     style: TextStyle(
                       fontSize: 12,
                       color: Color(0xFF64748B),
@@ -365,48 +369,6 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
-  Widget _buildBrandHeader() {
-    return Row(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(10),
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: const Color(0xFF334155)),
-          ),
-          child: Image.asset(
-            "assets/logopng.png",
-            width: 44,
-            height: 44,
-          ),
-        ),
-        const SizedBox(width: 14),
-        const Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Mega Paints',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: Colors.white,
-                letterSpacing: 0.3,
-              ),
-            ),
-            SizedBox(height: 2),
-            Text(
-              'Select a portal to open',
-              style: TextStyle(
-                fontSize: 13,
-                color: Color(0xFF94A3B8),
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
 
   Widget _buildModuleCard({
     required String title,

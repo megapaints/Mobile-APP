@@ -1065,7 +1065,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                         const SizedBox(width: 6),
                         Flexible(
                           child: Text(
-                            'Mega Paints • $_currentSiteName',
+                            _currentSiteName,
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 13,
