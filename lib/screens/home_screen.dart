@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'web_login_screen.dart';
+import 'chat_list_screen.dart';
 import '../services/auth_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
@@ -244,6 +245,19 @@ class _HomeScreenState extends State<HomeScreen>
                   icon: Icons.receipt_long_outlined,
                   onTap: () =>
                       _navigateToWebView('https://invoice.megapaints.org'),
+                ),
+                const SizedBox(height: 12),
+
+                _buildModuleCard(
+                  title: 'Team & Order Chat',
+                  subtitle: 'Direct messaging & order assignment rooms',
+                  icon: Icons.chat_bubble_outline_rounded,
+                  onTap: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const ChatListScreen(),
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 36),
 

@@ -15,6 +15,7 @@ import 'package:open_filex/open_filex.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
+import 'chat_list_screen.dart';
 
 class WebLoginScreen extends StatefulWidget {
   final String url;
@@ -1091,6 +1092,23 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                   tooltip: 'Reload',
                   onPressed: () {
                     _controller.reload();
+                  },
+                ),
+
+                // Chat Button
+                IconButton(
+                  icon: const Icon(
+                    Icons.chat_bubble_outline_rounded,
+                    color: Color(0xFF94A3B8),
+                    size: 18,
+                  ),
+                  tooltip: 'Team Chat',
+                  onPressed: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => const ChatListScreen(),
+                      ),
+                    );
                   },
                 ),
 
