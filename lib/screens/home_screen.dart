@@ -121,14 +121,21 @@ class _HomeScreenState extends State<HomeScreen>
 
     if (!mounted) return;
 
-    await AuthService.setLastOpenedWebsite(url);
+    final user = _currentUser ?? await AuthService.getCurrentUser();
+    final isCust = AuthService.isCustomer(user);
+    String targetUrl = url;
+    if (isCust && url.contains('delivery.megapaints.org')) {
+      targetUrl = 'https://delivery.megapaints.org/#/customer-formulas';
+    }
+
+    await AuthService.setLastOpenedWebsite(targetUrl);
 
     if (!mounted) return;
 
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => WebLoginScreen(url: url),
+        builder: (context) => WebLoginScreen(url: targetUrl),
       ),
     );
   }

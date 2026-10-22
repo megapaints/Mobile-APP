@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
@@ -8,6 +9,20 @@ import 'auth_service.dart';
 class ChatService {
   static const String _chatsCacheKey = 'cached_chats_list';
   static const String _messagesCachePrefix = 'cached_msgs_';
+
+  /// Currently open chat screen (used to suppress redundant notifications & trigger real-time updates)
+  static String? activeChatId;
+
+  /// Broadcast stream for real-time incoming messages
+  static final StreamController<Map<String, dynamic>> _messageStream =
+      StreamController<Map<String, dynamic>>.broadcast();
+
+  static Stream<Map<String, dynamic>> get onMessageReceived =>
+      _messageStream.stream;
+
+  static void notifyMessageReceived(Map<String, dynamic> data) {
+    _messageStream.add(data);
+  }
 
   /// 1. Get Paginated Chats for Current User
   static Future<Map<String, dynamic>> getChats({
@@ -132,6 +147,36 @@ class ChatService {
         'hasMoreOlder': false,
       };
     }
+  }
+
+  /// Get newer messages since a timestamp (real-time delta sync)
+  static Future<Map<String, dynamic>> getNewerMessages(
+    String chatId, {
+    required String after,
+  }) async {
+    try {
+      final url = Uri.parse("${AppConstants.apiBaseUrl}/getChatMessages");
+      final response = await http.post(
+        url,
+        headers: {"Content-Type": "application/json"},
+        body: jsonEncode({
+          "chatId": chatId,
+          "after": after,
+        }),
+      );
+
+      final dynamic decoded = jsonDecode(response.body);
+      if (response.statusCode == 200 && decoded is Map<String, dynamic> && decoded['success'] == true) {
+        final List<dynamic> rawMsgs = decoded['messages'] ?? [];
+        return {
+          'success': true,
+          'messages': List<Map<String, dynamic>>.from(rawMsgs),
+        };
+      }
+    } catch (e) {
+      debugPrint("[ChatService] getNewerMessages error: $e");
+    }
+    return {'success': false, 'messages': <Map<String, dynamic>>[]};
   }
 
   /// 3. Send a Message

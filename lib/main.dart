@@ -8,6 +8,7 @@ import 'screens/login_screen.dart';
 import 'screens/permissions_screen.dart';
 import 'screens/web_login_screen.dart';
 import 'services/auth_service.dart';
+import 'services/chat_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -32,8 +33,26 @@ void main() async {
 }
 
 void setupForegroundNotification() {
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    print("Foreground message: ${message.notification?.title}");
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    final data = message.data;
+
+    // Handle real-time chat messages
+    if (data['type'] == 'chat') {
+      ChatService.notifyMessageReceived(data);
+
+      // 1. Never show notification for messages sent by self
+      final senderId = data['senderId']?.toString();
+      final currentUserId = (await AuthService.getCurrentUser())?['id']?.toString();
+      if (senderId != null && currentUserId != null && senderId == currentUserId) {
+        return;
+      }
+
+      // 2. Never show notification banner if user is currently inside this chat room
+      final chatId = data['chatId']?.toString();
+      if (chatId != null && ChatService.activeChatId == chatId) {
+        return;
+      }
+    }
 
     // If message has a notification payload
     if (message.notification != null) {
@@ -130,26 +149,7 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (loggedIn) {
-      final lastUrl = await AuthService.getLastOpenedWebsite();
-      if (!mounted) return;
-
-      if (lastUrl != null && lastUrl.isNotEmpty) {
-        // Mount HomeScreen underneath seamlessly so returning to hub works naturally
-        Navigator.of(context).pushReplacement(
-          PageRouteBuilder(
-            pageBuilder: (context, anim1, anim2) => const HomeScreen(),
-            transitionDuration: Duration.zero,
-          ),
-        );
-        // Automatically open the last opened website
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) => WebLoginScreen(url: lastUrl),
-          ),
-        );
-      } else {
-        Navigator.of(context).pushReplacementNamed('/home');
-      }
+      Navigator.of(context).pushReplacementNamed('/home');
     } else {
       Navigator.of(context).pushReplacementNamed('/login');
     }

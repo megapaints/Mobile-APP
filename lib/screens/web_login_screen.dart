@@ -30,7 +30,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     with SingleTickerProviderStateMixin {
   late final WebViewController _controller;
   Timer? _authCheckTimer;
-  bool _userProcessed = false; // prevent duplicate triggers
+  String? _activeUserId; // track logged-in user ID
   bool _isLoading = true; // 👈 track WebView loading state
   bool _isFabExpanded = false; // Track FAB expansion state
   late String _currentUrl; // Track the current website URL
@@ -75,6 +75,11 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     AuthService.getAuthJson().then((val) {
       if (mounted) {
         _authJson = val;
+      }
+    });
+    AuthService.getCurrentUser().then((user) {
+      if (mounted && user != null && user['id'] != null) {
+        _activeUserId = user['id'].toString();
       }
     });
 
@@ -224,12 +229,49 @@ class _WebLoginScreenState extends State<WebLoginScreen>
       final js = """
         (function() {
           try {
+            var incoming = $escaped;
+            if (typeof incoming === 'string') {
+              try {
+                var test = JSON.parse(incoming);
+                if (typeof test === 'string') incoming = test;
+              } catch(e) {}
+            }
+            var incomingObj = typeof incoming === 'string' ? JSON.parse(incoming) : incoming;
+            var u = incomingObj && incomingObj.user ? incomingObj.user : {};
+
+            var isCust = (u.customerId != null && String(u.customerId).trim() !== '') ||
+                         (u.customer_id != null && String(u.customer_id).trim() !== '') ||
+                         (String(u.designationId) === '106') ||
+                         (String(u.designation_id) === '106') ||
+                         (u.designationName && String(u.designationName).toLowerCase() === 'customer') ||
+                         (u.designation && typeof u.designation === 'object' && u.designation.name && String(u.designation.name).toLowerCase() === 'customer') ||
+                         (typeof u.designation === 'string' && u.designation.toLowerCase() === 'customer');
+
+            if (isCust) {
+              u.designation = { id: 106, name: 'Customer' };
+              u.designationName = 'Customer';
+              u.designationId = 106;
+              incomingObj.user = u;
+            }
+
+            var targetStr = JSON.stringify(incomingObj);
             var current = window.localStorage.getItem('auth');
-            if (!current || current === 'null' || current === '""' || current === '{}') {
-              console.log('[Flutter] Auto-injecting unified auth session into localStorage');
-              window.localStorage.setItem('auth', $escaped);
-              
-              // If page currently redirected to login screen, redirect to root
+
+            if (!current || current === 'null' || current === '""' || current === '{}' || current !== targetStr) {
+              console.log('[Flutter] Syncing updated auth session into localStorage');
+              window.localStorage.setItem('auth', targetStr);
+              window.dispatchEvent(new Event('auth-updated'));
+              window.dispatchEvent(new Event('storage'));
+            }
+
+            // Customer route guard: keep customer inside customer portal pages without reloading
+            if (isCust && (window.location.host.indexOf('delivery') !== -1 || window.location.href.indexOf('delivery') !== -1)) {
+              var currH = window.location.hash || '';
+              if (currH.indexOf('login') !== -1 || currH === '' || currH === '#/' || currH === '#/home') {
+                console.log('[Flutter] Directing customer to #/customer-formulas');
+                window.location.hash = '#/customer-formulas';
+              }
+            } else {
               if (window.location.hash.indexOf('login') !== -1) {
                 console.log('[Flutter] Redirecting from login hash to root');
                 window.location.hash = '#/';
@@ -387,6 +429,16 @@ class _WebLoginScreenState extends State<WebLoginScreen>
       case 'goback':
         debugPrint("[WebLoginScreen] ⬅️ GoBack requested by website");
         _controller.goBack();
+        break;
+      case 'logout':
+        debugPrint("[WebLoginScreen] 🚪 Logout requested by website");
+        _authCheckTimer?.cancel();
+        _activeUserId = null;
+        AuthService.logout().then((_) {
+          if (mounted) {
+            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+          }
+        });
         break;
       default:
         debugPrint("[WebLoginScreen] ⚠️ Unknown message: $message");
@@ -633,7 +685,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
             // Or try to create (might fail without permissions)
           }
         } else {
-          path = dir?.path ?? (await getApplicationDocumentsDirectory()).path;
+          path = dir.path;
         }
 
         filename = filename.replaceAll(RegExp(r'[^\w\.-]'), '_');
@@ -733,7 +785,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
           return;
         }
       } else if (message.startsWith("ERROR:")) {
-        _logToast("❌ ${message}");
+        _logToast("❌ $message");
         return;
       } else {
         // Legacy raw string support
@@ -786,9 +838,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
   void _startAuthPolling() {
     _authCheckTimer?.cancel(); // clear any old timers
     _authCheckTimer = Timer.periodic(const Duration(seconds: 2), (_) async {
-      if (!_userProcessed) {
-        await _checkLoggedInUser();
-      }
+      await _checkLoggedInUser();
     });
   }
 
@@ -815,17 +865,21 @@ class _WebLoginScreenState extends State<WebLoginScreen>
           _authJson = raw;
           await AuthService.saveAuthJson(raw);
 
-          if (!_userProcessed) {
-            _userProcessed = true;
-            _authCheckTimer?.cancel();
+          if (_activeUserId != userId) {
+            // If another user was previously active, unregister their push token
+            if (_activeUserId != null && _activeUserId!.isNotEmpty) {
+              await PushTokenService.unregisterToken(_activeUserId!);
+            }
+            _activeUserId = userId;
             await _onLoginSuccess(userId);
           }
         }
       } else {
         // If the user was logged in previously and web app cleared auth (logout), detect logout
-        if (_userProcessed && (result.toString() == 'null' || result.toString().isEmpty)) {
-          debugPrint("[WebLoginScreen] 🚪 Web logout detected from WebView");
+        if (_activeUserId != null && _activeUserId!.isNotEmpty && (result.toString() == 'null' || result.toString().isEmpty)) {
+          debugPrint("[WebLoginScreen] 🚪 Web logout detected from WebView for user: $_activeUserId");
           _authCheckTimer?.cancel();
+          _activeUserId = null;
           await AuthService.logout();
           if (mounted) {
             Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
@@ -849,30 +903,42 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     super.dispose();
   }
 
-  /// Handle back button press - navigate back in WebView if possible
-  Future<bool> _onBackPressed() async {
+  /// Handle back button press - navigate back in WebView if possible, else return to /home
+  Future<void> _onBackPressed() async {
     // Close FAB if expanded
     if (_isFabExpanded) {
       setState(() => _isFabExpanded = false);
-      return false;
+      return;
     }
 
     if (await _controller.canGoBack()) {
       await _controller.goBack();
-      return false; // Don't pop the screen
+      return;
     }
-    return true; // Pop the screen (go back to main)
+
+    if (!mounted) return;
+    if (Navigator.of(context).canPop()) {
+      Navigator.of(context).pop();
+    } else {
+      Navigator.of(context).pushReplacementNamed('/home');
+    }
   }
 
   /// Switch to a different website
-  void _switchWebsite(String url) {
-    AuthService.setLastOpenedWebsite(url);
+  Future<void> _switchWebsite(String url) async {
+    String targetUrl = url;
+    final user = await AuthService.getCurrentUser();
+    if (AuthService.isCustomer(user) && url.contains('delivery.megapaints.org')) {
+      targetUrl = 'https://delivery.megapaints.org/#/customer-formulas';
+    }
+    await AuthService.setLastOpenedWebsite(targetUrl);
+    if (!mounted) return;
     setState(() {
       _isLoading = true;
       _isFabExpanded = false;
-      _currentUrl = url; // Update current URL
+      _currentUrl = targetUrl; // Update current URL
     });
-    _controller.loadRequest(Uri.parse(url));
+    _controller.loadRequest(Uri.parse(targetUrl));
   }
 
   /// Toggle FAB expansion
@@ -898,11 +964,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
       canPop: false, // We'll handle the pop manually
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-
-        final shouldPop = await _onBackPressed();
-        if (shouldPop && context.mounted) {
-          Navigator.of(context).pop();
-        }
+        await _onBackPressed();
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF0D1117),
@@ -1035,11 +1097,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                   ),
                   tooltip: 'Go Back',
                   onPressed: () async {
-                    if (await _controller.canGoBack()) {
-                      await _controller.goBack();
-                    } else if (mounted) {
-                      Navigator.of(context).pop();
-                    }
+                    await _onBackPressed();
                   },
                 ),
 

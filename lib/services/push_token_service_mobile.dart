@@ -1,22 +1,23 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:fluttertoast/fluttertoast.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+import '../utils/constants.dart';
 
 class PushTokenService {
+  static StreamSubscription<String>? _refreshSubscription;
+
   /// Register FCM token on server
   static Future<void> registerToken(String userId) async {
     try {
       final token = await FirebaseMessaging.instance.getToken();
-      if (token == null) {
-       // Fluttertoast.showToast(msg: "❌ No FCM token found");
+      if (token == null || token.isEmpty) {
         return;
       }
 
-      //Fluttertoast.showToast(msg: "📡 Sending token to server...");
-
       final response = await http.post(
-        Uri.parse("https://us-central1-mega-paints.cloudfunctions.net/api/saveToken"),
+        Uri.parse("${AppConstants.apiBaseUrl}/saveToken"),
         headers: {"Content-Type": "application/json"},
         body: jsonEncode({
           "userId": userId,
@@ -25,20 +26,56 @@ class PushTokenService {
       );
 
       if (response.statusCode == 200) {
-       // Fluttertoast.showToast(msg: "✅ Token registered successfully");
+        debugPrint("[PushTokenService] ✅ Token registered successfully for user: $userId");
       } else {
-       // Fluttertoast.showToast(msg: "⚠️ Server error: ${response.body}");
+        debugPrint("[PushTokenService] ⚠️ Server error registering token: ${response.body}");
       }
     } catch (e) {
-      //Fluttertoast.showToast(msg: "❌ Error registering token: $e");
+      debugPrint("[PushTokenService] ❌ Error registering token: $e");
     }
   }
 
   /// Listen for FCM token refresh
   static void listenTokenRefresh(String userId) {
-    FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
-     // Fluttertoast.showToast(msg: "🔄 Token refreshed: $newToken");
+    _refreshSubscription?.cancel();
+    _refreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
       registerToken(userId);
     });
+  }
+
+  /// Unregister FCM token on server and delete FCM token locally on device
+  static Future<void> unregisterToken(String userId) async {
+    try {
+      _refreshSubscription?.cancel();
+      _refreshSubscription = null;
+
+      final token = await FirebaseMessaging.instance.getToken();
+      if (token != null && token.isNotEmpty) {
+        final response = await http.post(
+          Uri.parse("${AppConstants.apiBaseUrl}/removeToken"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({
+            if (userId.isNotEmpty) "userId": userId,
+            "token": token,
+          }),
+        );
+        debugPrint("[PushTokenService] Remove token response: ${response.statusCode}");
+      } else if (userId.isNotEmpty) {
+        await http.post(
+          Uri.parse("${AppConstants.apiBaseUrl}/removeToken"),
+          headers: {"Content-Type": "application/json"},
+          body: jsonEncode({
+            "userId": userId,
+          }),
+        );
+      }
+
+      // Invalidate the FCM token on device so no more messages are received
+      // and a new token will be generated upon subsequent login.
+      await FirebaseMessaging.instance.deleteToken();
+      debugPrint("[PushTokenService] ✅ Token unregistered and deleted locally");
+    } catch (e) {
+      debugPrint("[PushTokenService] ❌ Error unregistering token: $e");
+    }
   }
 }

@@ -29,7 +29,15 @@ class AuthService {
           decoded is Map<String, dynamic> &&
           decoded['success'] == true &&
           decoded['user'] != null) {
-        final userData = decoded['user'];
+        final Map<String, dynamic> userData =
+            Map<String, dynamic>.from(decoded['user']);
+
+        // Normalize customer designation object so the website detects customer role
+        if (isCustomer(userData)) {
+          userData['designation'] = {'id': 106, 'name': 'Customer'};
+          userData['designationName'] = 'Customer';
+        }
+
         final authPayload = jsonEncode({'user': userData});
 
         // Save auth data to SharedPreferences matching the web localStorage format
@@ -69,6 +77,29 @@ class AuthService {
     }
   }
 
+  /// Check if user map represents a customer
+  static bool isCustomer(Map<String, dynamic>? user) {
+    if (user == null) return false;
+    if (user['customerId'] != null && user['customerId'].toString().isNotEmpty) {
+      return true;
+    }
+    if (user['designationId'] == 106 || user['designationId'] == '106') {
+      return true;
+    }
+    final des = user['designation'];
+    if (des is Map && des['name']?.toString().toLowerCase() == 'customer') {
+      return true;
+    }
+    if (des is String && des.toLowerCase() == 'customer') {
+      return true;
+    }
+    final desName = user['designationName']?.toString().toLowerCase();
+    if (desName == 'customer') {
+      return true;
+    }
+    return false;
+  }
+
   /// Check if a user is currently logged in
   static Future<bool> isLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
@@ -85,7 +116,12 @@ class AuthService {
     try {
       final decoded = jsonDecode(authData);
       if (decoded is Map<String, dynamic> && decoded['user'] != null) {
-        return Map<String, dynamic>.from(decoded['user']);
+        final user = Map<String, dynamic>.from(decoded['user']);
+        if (isCustomer(user)) {
+          user['designation'] = {'id': 106, 'name': 'Customer'};
+          user['designationName'] = 'Customer';
+        }
+        return user;
       }
     } catch (e) {
       debugPrint("Error parsing stored auth data: $e");
@@ -96,11 +132,38 @@ class AuthService {
   /// Get the exact auth JSON string to inject into WebView localStorage
   static Future<String?> getAuthJson() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getString(_authKey);
+    final raw = prefs.getString(_authKey);
+    if (raw == null || raw.isEmpty) return null;
+
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is Map<String, dynamic> && decoded['user'] != null) {
+        final user = Map<String, dynamic>.from(decoded['user']);
+        if (isCustomer(user)) {
+          user['designation'] = {'id': 106, 'name': 'Customer'};
+          user['designationName'] = 'Customer';
+          return jsonEncode({'user': user});
+        }
+      }
+    } catch (e) {
+      debugPrint("Error normalizing auth JSON: $e");
+    }
+    return raw;
   }
 
   /// Save or update raw auth JSON string
   static Future<void> saveAuthJson(String rawJson) async {
+    try {
+      final decoded = jsonDecode(rawJson);
+      if (decoded is Map<String, dynamic> && decoded['user'] != null) {
+        final user = Map<String, dynamic>.from(decoded['user']);
+        if (isCustomer(user)) {
+          user['designation'] = {'id': 106, 'name': 'Customer'};
+          user['designationName'] = 'Customer';
+          rawJson = jsonEncode({'user': user});
+        }
+      }
+    } catch (_) {}
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_authKey, rawJson);
   }
@@ -128,6 +191,25 @@ class AuthService {
   /// Log out and clear stored session
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();
+    final authData = prefs.getString(_authKey);
+    String userId = '';
+    if (authData != null && authData.isNotEmpty) {
+      try {
+        final decoded = jsonDecode(authData);
+        if (decoded is Map<String, dynamic> && decoded['user'] != null) {
+          userId = decoded['user']['id']?.toString() ?? '';
+        }
+      } catch (e) {
+        debugPrint("Error extracting userId for logout: $e");
+      }
+    }
+
+    try {
+      await PushTokenService.unregisterToken(userId);
+    } catch (e) {
+      debugPrint("Push token unregistration error: $e");
+    }
+
     await prefs.remove(_authKey);
     await prefs.remove(_lastWebsiteKey);
   }

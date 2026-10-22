@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
@@ -22,6 +23,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
   String? _nextCursor;
   String? _currentUserId;
   String _searchQuery = '';
+  StreamSubscription? _chatListPushSub;
 
   @override
   void initState() {
@@ -29,6 +31,11 @@ class _ChatListScreenState extends State<ChatListScreen> {
     _loadCurrentUser();
     _loadChats(refresh: true);
     _scrollController.addListener(_onScroll);
+    _chatListPushSub = ChatService.onMessageReceived.listen((_) {
+      if (mounted) {
+        _loadChats(refresh: true);
+      }
+    });
   }
 
   Future<void> _loadCurrentUser() async {
@@ -161,6 +168,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   @override
   void dispose() {
+    _chatListPushSub?.cancel();
     _scrollController.dispose();
     _searchController.dispose();
     super.dispose();

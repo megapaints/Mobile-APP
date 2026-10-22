@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../services/chat_service.dart';
@@ -33,14 +34,53 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
   String? _oldestCursor;
   String? _currentUserId;
   String? _currentUserName;
+  Timer? _realtimeTimer;
+  StreamSubscription? _pushSub;
 
   @override
   void initState() {
     super.initState();
+    ChatService.activeChatId = widget.chatId;
     _loadCurrentUser();
     _loadInitialMessages();
     _scrollController.addListener(_onScroll);
     ChatService.markChatRead(widget.chatId);
+    _startRealtimeSync();
+  }
+
+  void _startRealtimeSync() {
+    _realtimeTimer = Timer.periodic(const Duration(milliseconds: 2500), (_) {
+      _syncLatestMessages();
+    });
+
+    _pushSub = ChatService.onMessageReceived.listen((data) {
+      if (data['chatId']?.toString() == widget.chatId) {
+        _syncLatestMessages();
+      }
+    });
+  }
+
+  Future<void> _syncLatestMessages() async {
+    if (_messages.isEmpty) return;
+    final newestTime = _messages.first['createdAt']?.toString();
+    if (newestTime == null || newestTime.isEmpty) return;
+
+    final result = await ChatService.getNewerMessages(widget.chatId, after: newestTime);
+    if (result['success'] == true && mounted) {
+      final newMsgs = List<Map<String, dynamic>>.from(result['messages'] ?? []);
+      if (newMsgs.isNotEmpty) {
+        newMsgs.sort((a, b) => (b['createdAt'] ?? '').toString().compareTo((a['createdAt'] ?? '').toString()));
+        setState(() {
+          for (final msg in newMsgs.reversed) {
+            final id = msg['id'];
+            if (!_messages.any((m) => m['id'] == id)) {
+              _messages.insert(0, msg);
+            }
+          }
+        });
+        ChatService.markChatRead(widget.chatId);
+      }
+    }
   }
 
   Future<void> _loadCurrentUser() async {
@@ -170,6 +210,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   @override
   void dispose() {
+    _realtimeTimer?.cancel();
+    _pushSub?.cancel();
+    if (ChatService.activeChatId == widget.chatId) {
+      ChatService.activeChatId = null;
+    }
     _scrollController.dispose();
     _textController.dispose();
     super.dispose();
