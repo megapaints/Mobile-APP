@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:math';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -568,6 +569,51 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     }
   }
 
+  static const MethodChannel _mediaScannerChannel =
+      MethodChannel('com.megapaints/media_scanner');
+
+  /// Scan media files to register them with Android's MediaStore so they appear in Gallery
+  Future<void> _scanMediaFile(String filePath) async {
+    if (!Platform.isAndroid) return;
+    try {
+      final ext = filePath.toLowerCase();
+      final isMedia = ext.endsWith('.jpg') ||
+          ext.endsWith('.jpeg') ||
+          ext.endsWith('.png') ||
+          ext.endsWith('.webp') ||
+          ext.endsWith('.gif') ||
+          ext.endsWith('.mp4');
+
+      if (isMedia) {
+        debugPrint("[WebLoginScreen] 📸 Notifying MediaScanner for: $filePath");
+        await _mediaScannerChannel.invokeMethod('scanFile', {'path': filePath});
+      }
+    } catch (e) {
+      debugPrint("[WebLoginScreen] ⚠️ MediaScanner invocation error: $e");
+    }
+  }
+
+  /// Automatically generate a non-conflicting unique filename if a file with the same name exists
+  /// (e.g. photo.jpg -> photo (1).jpg -> photo (2).jpg)
+  Future<File> _getUniqueFile(String directoryPath, String filename) async {
+    String nameWithoutExt = filename;
+    String ext = '';
+
+    final dotIndex = filename.lastIndexOf('.');
+    if (dotIndex != -1 && dotIndex > 0) {
+      nameWithoutExt = filename.substring(0, dotIndex);
+      ext = filename.substring(dotIndex);
+    }
+
+    File candidate = File('$directoryPath/$filename');
+    int counter = 1;
+    while (await candidate.exists()) {
+      candidate = File('$directoryPath/$nameWithoutExt ($counter)$ext');
+      counter++;
+    }
+    return candidate;
+  }
+
   /// Handle file downloads
   Future<void> _handleDownload(String url) async {
     debugPrint("[WebLoginScreen] 📥 Download initiated: $url");
@@ -689,12 +735,16 @@ class _WebLoginScreenState extends State<WebLoginScreen>
         }
 
         filename = filename.replaceAll(RegExp(r'[^\w\.-]'), '_');
-        debugPrint("[WebLoginScreen] 💾 Saving to $path/$filename");
+        debugPrint("[WebLoginScreen] 💾 Preparing file in $path/$filename");
 
-        final File file = File('$path/$filename');
+        final File file = await _getUniqueFile(path, filename);
         await file.writeAsBytes(bytes);
+        await _scanMediaFile(file.path);
 
-        _logToast("✅ Saved to $filename");
+        final savedFileName = file.uri.pathSegments.isNotEmpty
+            ? file.uri.pathSegments.last
+            : filename;
+        _logToast("✅ Saved to $savedFileName");
 
         final result = await OpenFilex.open(file.path);
         debugPrint(
@@ -812,10 +862,14 @@ class _WebLoginScreenState extends State<WebLoginScreen>
       // Sanitize filename
       filename = filename.replaceAll(RegExp(r'[^\w\.-]'), '_');
 
-      final File file = File('$path/$filename');
+      final File file = await _getUniqueFile(path, filename);
       await file.writeAsBytes(bytes);
+      await _scanMediaFile(file.path);
 
-      _logToast("✅ Saved to $filename");
+      final savedFileName = file.uri.pathSegments.isNotEmpty
+          ? file.uri.pathSegments.last
+          : filename;
+      _logToast("✅ Saved to $savedFileName");
 
       final result = await OpenFilex.open(file.path);
       debugPrint("[WebLoginScreen] 📂 Open result for blob: ${result.type}");
@@ -903,9 +957,17 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     super.dispose();
   }
 
-  /// Handle back button press - navigate back in WebView if possible, else return to /home
-  Future<void> _onBackPressed() async {
+  /// System device back button / swipe gesture - disabled while in webview to prevent accidental exits/closing orders
+  Future<void> _onSystemBackPressed() async {
     // Close FAB if expanded
+    if (_isFabExpanded) {
+      setState(() => _isFabExpanded = false);
+    }
+    // Intentionally disabled for system back button so orders and forms are not lost
+  }
+
+  /// Explicit Top-Bar back button press - navigates back in WebView history or exits
+  Future<void> _onTopBarBackPressed() async {
     if (_isFabExpanded) {
       setState(() => _isFabExpanded = false);
       return;
@@ -961,10 +1023,10 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     const fabSize = 56.0;
 
     return PopScope(
-      canPop: false, // We'll handle the pop manually
+      canPop: false, // Prevents Android back button/gestures from popping the screen
       onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
-        await _onBackPressed();
+        await _onSystemBackPressed();
       },
       child: Scaffold(
         backgroundColor: const Color(0xFF0D1117),
@@ -1088,7 +1150,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             child: Row(
               children: [
-                // Back Button
+                // Top Back Button (only way to navigate back)
                 IconButton(
                   icon: const Icon(
                     Icons.arrow_back_ios_new_rounded,
@@ -1097,10 +1159,9 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                   ),
                   tooltip: 'Go Back',
                   onPressed: () async {
-                    await _onBackPressed();
+                    await _onTopBarBackPressed();
                   },
                 ),
-
                 // Portal Title Pill
                 Expanded(
                   child: Container(
@@ -1153,7 +1214,8 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                   },
                 ),
 
-                // Chat Button
+                // Chat Button (Hidden for now)
+                /*
                 IconButton(
                   icon: const Icon(
                     Icons.chat_bubble_outline_rounded,
@@ -1169,6 +1231,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                     );
                   },
                 ),
+                */
 
                 // Hub / Exit Button
                 IconButton(

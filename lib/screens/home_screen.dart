@@ -253,8 +253,9 @@ class _HomeScreenState extends State<HomeScreen>
                   onTap: () =>
                       _navigateToWebView('https://invoice.megapaints.org'),
                 ),
+                // Team & Order Chat (Hidden for now)
+                /*
                 const SizedBox(height: 12),
-
                 _buildModuleCard(
                   title: 'Team & Order Chat',
                   subtitle: 'Direct messaging & order assignment rooms',
@@ -266,6 +267,7 @@ class _HomeScreenState extends State<HomeScreen>
                     ),
                   ),
                 ),
+                */
                 const SizedBox(height: 36),
 
                 // Clean Footer
