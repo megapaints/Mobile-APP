@@ -193,103 +193,90 @@ class _HomeScreenState extends State<HomeScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0F172A),
+      backgroundColor: const Color(0xFF0B0F17),
       body: SafeArea(
-        child: FadeTransition(
-          opacity: _fadeAnimation,
-          child: SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top User Profile Bar
-                _buildUserProfileBar(),
-                const SizedBox(height: 24),
+        child: Column(
+          children: [
+            // Fixed Top Navbar with crisp partition divider
+            _buildTopNavbar(),
 
-                // Section Header
-                const Text(
-                  'Select Portal',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    letterSpacing: 0.2,
+            // Scrollable Content
+            Expanded(
+              child: FadeTransition(
+                opacity: _fadeAnimation,
+                child: SingleChildScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  padding: const EdgeInsets.fromLTRB(20, 22, 20, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Section Header
+                      const Text(
+                        'Portals & Workspaces',
+                        style: TextStyle(
+                          fontSize: 21,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      const Text(
+                        'Access your designated department portal',
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Color(0xFF94A3B8),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Bento Hero: Delivery Portal
+                      _buildDeliveryHeroCard(),
+                      const SizedBox(height: 14),
+
+                      // Bento Split Row: Inventory & Invoice
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildBentoCard(
+                              title: 'Inventory',
+                              subtitle: 'QR stock & materials',
+                              icon: Icons.inventory_2_outlined,
+                              accentColor: const Color(0xFF10B981),
+                              onTap: () => _navigateToWebView(
+                                  'https://qr-stock-management.megapaints.org'),
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: _buildBentoCard(
+                              title: 'Invoice',
+                              subtitle: 'Bills & statements',
+                              icon: Icons.receipt_long_outlined,
+                              accentColor: const Color(0xFFF59E0B),
+                              onTap: () => _navigateToWebView(
+                                  'https://invoice.megapaints.org'),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Choose a workspace to continue',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF94A3B8),
-                  ),
-                ),
-                const SizedBox(height: 20),
-
-                // Unified Module Cards (Clean & Consistent Slate Design)
-                _buildModuleCard(
-                  title: 'Delivery',
-                  subtitle: 'Dispatch orders, track routes & signatures',
-                  icon: Icons.local_shipping_outlined,
-                  onTap: () =>
-                      _navigateToWebView('https://delivery.megapaints.org'),
-                ),
-                const SizedBox(height: 12),
-
-                _buildModuleCard(
-                  title: 'Inventory',
-                  subtitle: 'QR stock management, batches & materials',
-                  icon: Icons.inventory_2_outlined,
-                  onTap: () => _navigateToWebView(
-                      'https://qr-stock-management.megapaints.org'),
-                ),
-                const SizedBox(height: 12),
-
-                _buildModuleCard(
-                  title: 'Invoice',
-                  subtitle: 'Generate invoices, accounts & statements',
-                  icon: Icons.receipt_long_outlined,
-                  onTap: () =>
-                      _navigateToWebView('https://invoice.megapaints.org'),
-                ),
-                // Team & Order Chat (Hidden for now)
-                /*
-                const SizedBox(height: 12),
-                _buildModuleCard(
-                  title: 'Team & Order Chat',
-                  subtitle: 'Direct messaging & order assignment rooms',
-                  icon: Icons.chat_bubble_outline_rounded,
-                  onTap: () => Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const ChatListScreen(),
-                    ),
-                  ),
-                ),
-                */
-                const SizedBox(height: 36),
-
-                // Clean Footer
-                const Center(
-                  child: Text(
-                    'All rights reserved',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF64748B),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-              ],
+              ),
             ),
-          ),
+
+            // Bottom Pinned Lancway Footer
+            _buildLancwayFooter(),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildUserProfileBar() {
+  /// Top Navbar with distinct full-width partition
+  Widget _buildTopNavbar() {
     final name = _currentUser?['name']?.toString().isNotEmpty == true
         ? _currentUser!['name'].toString()
         : (_currentUser?['username']?.toString() ?? 'User');
@@ -302,28 +289,49 @@ class _HomeScreenState extends State<HomeScreen>
     final initial = name.isNotEmpty ? name[0].toUpperCase() : 'M';
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFF334155)),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F172A),
+        border: Border(
+          bottom: BorderSide(
+            color: Color(0xFF1E293B),
+            width: 1.5,
+          ),
+        ),
       ),
       child: Row(
         children: [
-          // User Avatar Circle
-          CircleAvatar(
-            radius: 18,
-            backgroundColor: const Color(0xFF2563EB),
-            child: Text(
-              initial,
-              style: const TextStyle(
-                color: Colors.white,
-                fontWeight: FontWeight.bold,
-                fontSize: 14,
+          // User Avatar Circle with Gradient
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF2563EB), Color(0xFF38BDF8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(14),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF2563EB).withOpacity(0.35),
+                  blurRadius: 8,
+                  offset: const Offset(0, 3),
+                ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                initial,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                ),
               ),
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
 
           // User Info
           Expanded(
@@ -331,59 +339,68 @@ class _HomeScreenState extends State<HomeScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
+                const Text(
+                  'Welcome back,',
+                  style: TextStyle(
+                    color: Color(0xFF94A3B8),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+                const SizedBox(height: 1),
                 Text(
                   name,
                   style: const TextStyle(
                     color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    letterSpacing: 0.1,
                   ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  designation.toString(),
-                  style: const TextStyle(
-                    color: Color(0xFF94A3B8),
-                    fontSize: 11,
+                const SizedBox(height: 4),
+                // Designation badge pill
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E293B),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: const Color(0xFF334155), width: 0.8),
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
+                  child: Text(
+                    designation.toString().toUpperCase(),
+                    style: const TextStyle(
+                      color: Color(0xFF38BDF8),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
 
           // Logout Button
-          InkWell(
-            onTap: _handleLogout,
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0F172A),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFF334155)),
-              ),
-              child: const Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    Icons.logout_rounded,
-                    color: Color(0xFF94A3B8),
-                    size: 15,
-                  ),
-                  SizedBox(width: 5),
-                  Text(
-                    'Logout',
-                    style: TextStyle(
-                      color: Color(0xFFE2E8F0),
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _handleLogout,
+              borderRadius: BorderRadius.circular(12),
+              child: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF334155)),
+                ),
+                child: const Icon(
+                  Icons.logout_rounded,
+                  color: Color(0xFF94A3B8),
+                  size: 18,
+                ),
               ),
             ),
           ),
@@ -392,81 +409,217 @@ class _HomeScreenState extends State<HomeScreen>
     );
   }
 
+  /// Bento Hero: Featured Delivery Card
+  Widget _buildDeliveryHeroCard() {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _navigateToWebView('https://delivery.megapaints.org'),
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF131B2E),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(
+              color: const Color(0xFF2563EB).withOpacity(0.6),
+              width: 1.5,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF2563EB).withOpacity(0.12),
+                blurRadius: 18,
+                offset: const Offset(0, 6),
+              ),
+            ],
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Top row: Icon and Live Pill
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: const Color(0xFF2563EB).withOpacity(0.4),
+                      ),
+                    ),
+                    child: const Icon(
+                      Icons.local_shipping_outlined,
+                      size: 26,
+                      color: Color(0xFF38BDF8),
+                    ),
+                  ),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F2B48),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: const Color(0xFF38BDF8).withOpacity(0.5),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF38BDF8),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Text(
+                          'FEATURED',
+                          style: TextStyle(
+                            color: Color(0xFF38BDF8),
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 18),
+              const Text(
+                'Delivery Portal',
+                style: TextStyle(
+                  fontSize: 19,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                  letterSpacing: 0.2,
+                ),
+              ),
+              const SizedBox(height: 5),
+              const Text(
+                'Dispatch orders, track routes & digital signatures',
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Color(0xFF94A3B8),
+                  height: 1.3,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 
-  Widget _buildModuleCard({
+  /// Bento Split Square Cards (Inventory & Invoice)
+  Widget _buildBentoCard({
     required String title,
     required String subtitle,
     required IconData icon,
+    required Color accentColor,
     required VoidCallback onTap,
   }) {
     return Material(
       color: Colors.transparent,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: Container(
-          width: double.infinity,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: const Color(0xFF1E293B),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(20),
             border: Border.all(
               color: const Color(0xFF334155),
-              width: 1,
+              width: 1.2,
             ),
           ),
-          child: Row(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Icon Container (Neutral clean slate)
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF334155)),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: accentColor.withOpacity(0.3),
+                  ),
                 ),
                 child: Icon(
                   icon,
                   size: 24,
-                  color: const Color(0xFF38BDF8),
+                  color: accentColor,
                 ),
               ),
-              const SizedBox(width: 16),
-
-              // Title and Description
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      title,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      subtitle,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Color(0xFF94A3B8),
-                      ),
-                    ),
-                  ],
+              const SizedBox(height: 18),
+              Text(
+                title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
                 ),
               ),
-
-              // Minimal Arrow Chevron
-              const Icon(
-                Icons.arrow_forward_ios_rounded,
-                size: 14,
-                color: Color(0xFF64748B),
+              const SizedBox(height: 4),
+              Text(
+                subtitle,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: Color(0xFF94A3B8),
+                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  /// Bottom Pinned Lancway Footer
+  Widget _buildLancwayFooter() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(vertical: 14),
+      decoration: const BoxDecoration(
+        color: Color(0xFF0F172A),
+        border: Border(
+          top: BorderSide(
+            color: Color(0xFF1E293B),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 6,
+            height: 6,
+            decoration: BoxDecoration(
+              color: const Color(0xFF38BDF8).withOpacity(0.7),
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'All rights reserved to Lancway',
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              color: Color(0xFF64748B),
+              letterSpacing: 0.3,
+            ),
+          ),
+        ],
       ),
     );
   }

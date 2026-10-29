@@ -1139,37 +1139,58 @@ class _WebLoginScreenState extends State<WebLoginScreen>
         border: Border(
           bottom: BorderSide(
             color: Color(0xFF1E293B),
-            width: 1,
+            width: 1.5,
           ),
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black26,
+            blurRadius: 8,
+            offset: Offset(0, 3),
+          ),
+        ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
             child: Row(
               children: [
                 // Top Back Button (only way to navigate back)
-                IconButton(
-                  icon: const Icon(
-                    Icons.arrow_back_ios_new_rounded,
-                    color: Color(0xFF94A3B8),
-                    size: 16,
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () async {
+                      await _onTopBarBackPressed();
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E293B),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF334155)),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        color: Color(0xFF94A3B8),
+                        size: 15,
+                      ),
+                    ),
                   ),
-                  tooltip: 'Go Back',
-                  onPressed: () async {
-                    await _onTopBarBackPressed();
-                  },
                 ),
+                const SizedBox(width: 8),
+
                 // Portal Title Pill
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 12, vertical: 6),
+                    height: 36,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       color: const Color(0xFF1E293B),
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color: const Color(0xFF334155),
                       ),
@@ -1182,7 +1203,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                           color: Color(0xFF38BDF8),
                           size: 13,
                         ),
-                        const SizedBox(width: 6),
+                        const SizedBox(width: 7),
                         Flexible(
                           child: Text(
                             _currentSiteName,
@@ -1190,6 +1211,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                               color: Colors.white,
                               fontSize: 13,
                               fontWeight: FontWeight.w600,
+                              letterSpacing: 0.2,
                             ),
                             overflow: TextOverflow.ellipsis,
                           ),
@@ -1198,52 +1220,57 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                     ),
                   ),
                 ),
-
-                const SizedBox(width: 4),
+                const SizedBox(width: 8),
 
                 // Reload Button
-                IconButton(
-                  icon: const Icon(
-                    Icons.refresh_rounded,
-                    color: Color(0xFF94A3B8),
-                    size: 19,
-                  ),
-                  tooltip: 'Reload',
-                  onPressed: () {
-                    _controller.reload();
-                  },
-                ),
-
-                // Chat Button (Hidden for now)
-                /*
-                IconButton(
-                  icon: const Icon(
-                    Icons.chat_bubble_outline_rounded,
-                    color: Color(0xFF94A3B8),
-                    size: 18,
-                  ),
-                  tooltip: 'Team Chat',
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (_) => const ChatListScreen(),
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      _controller.reload();
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E293B),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF334155)),
                       ),
-                    );
-                  },
+                      child: const Icon(
+                        Icons.refresh_rounded,
+                        color: Color(0xFF94A3B8),
+                        size: 18,
+                      ),
+                    ),
+                  ),
                 ),
-                */
+                const SizedBox(width: 6),
 
                 // Hub / Exit Button
-                IconButton(
-                  icon: const Icon(
-                    Icons.grid_view_rounded,
-                    color: Color(0xFF94A3B8),
-                    size: 18,
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      Navigator.of(context).pop();
+                    },
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E293B),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFF334155)),
+                      ),
+                      child: const Icon(
+                        Icons.grid_view_rounded,
+                        color: Color(0xFF94A3B8),
+                        size: 17,
+                      ),
+                    ),
                   ),
-                  tooltip: 'Main Hub',
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
                 ),
               ],
             ),
