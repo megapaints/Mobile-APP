@@ -93,6 +93,14 @@ class _WebLoginScreenState extends State<WebLoginScreen>
         },
       )
       ..addJavaScriptChannel(
+        'FlutterDownloadChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          debugPrint(
+              "[WebLoginScreen] 📥 Message from FlutterDownloadChannel: ${message.message}");
+          _handleFlutterDownloadChannel(message.message);
+        },
+      )
+      ..addJavaScriptChannel(
         'FlutterWebView',
         onMessageReceived: (JavaScriptMessage message) {
           debugPrint(
@@ -310,6 +318,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
         };
         
         console.log('[Flutter] Bridge ready, FlutterWebView available:', !!window.FlutterWebView);
+        console.log('[Flutter] FlutterDownloadChannel available:', !!window.FlutterDownloadChannel);
       })();
     """;
     _controller.runJavaScript(js);
@@ -627,30 +636,238 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     }
   }
 
-  /// Request storage permissions with support for Android 11+
+  /// Request storage permissions with support for Android 12 or below and Android 13+
   Future<bool> _checkAndRequestStoragePermission() async {
     if (!Platform.isAndroid) return true;
 
-    // 1. Check Manage External Storage (Android 11+)
+    // 1. Check if regular storage is already granted (Android 12 or below)
+    if (await Permission.storage.isGranted) {
+      return true;
+    }
+
+    // 2. Check Manage External Storage (Android 11+)
     if (await Permission.manageExternalStorage.isGranted) {
       return true;
     }
 
-    // 2. Try to request Manage External Storage
-    // This is required for writing to public Downloads folder on Android 11+
-    // On older Android, this might just return restricted/denied, which we handle below
+    // 3. Request standard storage permission first (handles Android 12 or below)
+    final storageStatus = await Permission.storage.request();
+    if (storageStatus.isGranted) {
+      return true;
+    }
+
+    // 4. Try requesting Manage External Storage if standard storage wasn't granted
     final manageStatus = await Permission.manageExternalStorage.request();
     if (manageStatus.isGranted) {
       return true;
     }
 
-    // 3. Fallback: Check/Request regular Storage (Android < 11)
-    if (await Permission.storage.isGranted) {
-      return true;
+    return false;
+  }
+
+  /// Save bytes directly into the public Android Downloads directory (/storage/emulated/0/Download/)
+  /// or fallback to getDownloadsDirectory() / getExternalStorageDirectory()
+  Future<File> _saveBytesToDownloads(Uint8List bytes, String filename) async {
+    Directory? targetDir;
+
+    if (Platform.isAndroid) {
+      final publicDownloads = Directory('/storage/emulated/0/Download');
+      if (await publicDownloads.exists()) {
+        targetDir = publicDownloads;
+      }
     }
 
-    final storageStatus = await Permission.storage.request();
-    return storageStatus.isGranted;
+    if (targetDir == null) {
+      try {
+        final downloadsDir = await getDownloadsDirectory();
+        if (downloadsDir != null && await downloadsDir.exists()) {
+          targetDir = downloadsDir;
+        }
+      } catch (_) {}
+    }
+
+    if (targetDir == null) {
+      try {
+        final extDir = await getExternalStorageDirectory();
+        if (extDir != null) targetDir = extDir;
+      } catch (_) {}
+    }
+
+    targetDir ??= await getApplicationDocumentsDirectory();
+
+    // Sanitize filename: remove illegal path characters while preserving spaces, parentheses, dots, hyphens
+    String sanitized = filename.replaceAll(RegExp(r'[<>:"/\\|?*]'), '_').trim();
+    if (sanitized.isEmpty) {
+      sanitized = 'download_${DateTime.now().millisecondsSinceEpoch}';
+    }
+
+    if (!await targetDir.exists()) {
+      try {
+        await targetDir.create(recursive: true);
+      } catch (_) {}
+    }
+
+    final File file = await _getUniqueFile(targetDir.path, sanitized);
+    await file.writeAsBytes(bytes, flush: true);
+    return file;
+  }
+
+  /// Handle downloads triggered via FlutterDownloadChannel JavaScript bridge
+  Future<void> _handleFlutterDownloadChannel(String message) async {
+    debugPrint(
+        "[WebLoginScreen] 📥 FlutterDownloadChannel message received: $message");
+
+    // 7. Handle storage permissions if targeting Android 12 or below
+    if (!await _checkAndRequestStoragePermission()) {
+      _logToast("⚠️ Storage permission required to download files");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+                "⚠️ Storage permission required to save files to Downloads"),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
+
+    try {
+      final dynamic decoded = jsonDecode(message);
+      if (decoded is! Map<String, dynamic>) {
+        throw const FormatException("Payload is not a valid JSON object");
+      }
+
+      final Map<String, dynamic> data = decoded;
+      final String fileName =
+          (data['fileName'] ?? data['filename'] ?? '').toString().trim();
+      final String? base64Data =
+          data['base64']?.toString() ?? data['data']?.toString();
+      final String? url = data['url']?.toString();
+
+      Uint8List? bytes;
+
+      // 3. If base64 is present: decode base64 string into bytes using base64Decode()
+      if (base64Data != null && base64Data.trim().isNotEmpty) {
+        _logToast("📥 Processing file data...");
+        final String cleanBase64 = base64Data.contains(',')
+            ? base64Data.split(',').last
+            : base64Data;
+        bytes = base64Decode(cleanBase64.replaceAll(RegExp(r'\s+'), ''));
+      }
+      // 4. If url is present: download bytes using http.get(Uri.parse(url))
+      else if (url != null && url.trim().isNotEmpty) {
+        _logToast(
+            "📥 Downloading ${fileName.isNotEmpty ? fileName : 'file'}...");
+        String userAgent = '';
+        try {
+          final userAgentObj = await _controller
+              .runJavaScriptReturningResult('navigator.userAgent');
+          userAgent = userAgentObj.toString().replaceAll('"', '').trim();
+        } catch (_) {}
+
+        final response = await http.get(
+          Uri.parse(url),
+          headers: {
+            if (userAgent.isNotEmpty) 'User-Agent': userAgent,
+          },
+        );
+
+        if (response.statusCode == 200) {
+          bytes = response.bodyBytes;
+        } else {
+          throw Exception("HTTP ${response.statusCode} while downloading file");
+        }
+      } else {
+        throw Exception("Payload contains neither base64 data nor url");
+      }
+
+      if (bytes == null || bytes.isEmpty) {
+        throw Exception("Downloaded file is empty (0 bytes)");
+      }
+
+      // Determine clean, exact filename
+      String finalFileName = fileName;
+      if (finalFileName.isEmpty) {
+        if (url != null && Uri.tryParse(url)?.pathSegments.isNotEmpty == true) {
+          finalFileName = Uri.parse(url).pathSegments.last;
+        } else {
+          finalFileName = "download_${DateTime.now().millisecondsSinceEpoch}";
+        }
+      }
+
+      // Auto-detect extension if missing from filename based on magic bytes
+      if (!finalFileName.contains('.')) {
+        if (bytes.length >= 4 &&
+            bytes[0] == 0x25 &&
+            bytes[1] == 0x50 &&
+            bytes[2] == 0x44 &&
+            bytes[3] == 0x46) {
+          finalFileName += '.pdf';
+        } else if (bytes.length >= 4 &&
+            bytes[0] == 0x89 &&
+            bytes[1] == 0x50 &&
+            bytes[2] == 0x4E &&
+            bytes[3] == 0x47) {
+          finalFileName += '.png';
+        } else if (bytes.length >= 3 &&
+            bytes[0] == 0xFF &&
+            bytes[1] == 0xD8 &&
+            bytes[2] == 0xFF) {
+          finalFileName += '.jpg';
+        }
+      }
+
+      // 5. Save the bytes directly into the public Android Downloads directory
+      final File savedFile = await _saveBytesToDownloads(bytes, finalFileName);
+      await _scanMediaFile(savedFile.path);
+
+      final String displayName = savedFile.uri.pathSegments.isNotEmpty
+          ? savedFile.uri.pathSegments.last
+          : finalFileName;
+
+      debugPrint(
+          "[WebLoginScreen] ✅ Successfully saved file to: ${savedFile.path}");
+
+      // 6. Show a SnackBar / notification confirming the file was saved
+      _logToast("✅ Saved to $displayName");
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("✅ Saved $displayName to Downloads"),
+            action: SnackBarAction(
+              label: "Open",
+              textColor: Colors.white,
+              onPressed: () => OpenFilex.open(savedFile.path),
+            ),
+            duration: const Duration(seconds: 5),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+
+      // Optionally / automatically open the file using open_filex
+      try {
+        final openResult = await OpenFilex.open(savedFile.path);
+        debugPrint(
+            "[WebLoginScreen] 📂 OpenFilex result: ${openResult.type} - ${openResult.message}");
+      } catch (e) {
+        debugPrint("[WebLoginScreen] ⚠️ Failed to auto-open file: $e");
+      }
+    } catch (e) {
+      debugPrint("[WebLoginScreen] ❌ Error in FlutterDownloadChannel: $e");
+      _logToast("❌ Failed to save file: $e");
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("❌ Failed to save file: $e"),
+            behavior: SnackBarBehavior.floating,
+            backgroundColor: Colors.red.shade700,
+          ),
+        );
+      }
+    }
   }
 
   /// Download file using http package
@@ -720,25 +937,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
           }
         }
 
-        // Use public Downloads folder instead of app scoped
-        String path;
-        if (Platform.isAndroid) {
-          path = '/storage/emulated/0/Download';
-          // Create directory if it doesn't exist (unlikely for Downloads but good practice)
-          final d = Directory(path);
-          if (!await d.exists()) {
-            // Fallback to app specific if public download dir doesn't exist?
-            // Or try to create (might fail without permissions)
-          }
-        } else {
-          path = dir.path;
-        }
-
-        filename = filename.replaceAll(RegExp(r'[^\w\.-]'), '_');
-        debugPrint("[WebLoginScreen] 💾 Preparing file in $path/$filename");
-
-        final File file = await _getUniqueFile(path, filename);
-        await file.writeAsBytes(bytes);
+        final File file = await _saveBytesToDownloads(bytes, filename);
         await _scanMediaFile(file.path);
 
         final savedFileName = file.uri.pathSegments.isNotEmpty
@@ -850,20 +1049,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
       final String cleanBase64 = base64Data.split(',').last;
       final Uint8List bytes = base64Decode(cleanBase64);
 
-      // Use public Downloads folder
-      String path;
-      if (Platform.isAndroid) {
-        path = '/storage/emulated/0/Download';
-      } else {
-        final dir = await getApplicationDocumentsDirectory();
-        path = dir.path;
-      }
-
-      // Sanitize filename
-      filename = filename.replaceAll(RegExp(r'[^\w\.-]'), '_');
-
-      final File file = await _getUniqueFile(path, filename);
-      await file.writeAsBytes(bytes);
+      final File file = await _saveBytesToDownloads(bytes, filename);
       await _scanMediaFile(file.path);
 
       final savedFileName = file.uri.pathSegments.isNotEmpty
