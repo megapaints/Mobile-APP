@@ -2,7 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -16,7 +15,6 @@ import 'package:open_filex/open_filex.dart';
 import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
 import 'package:file_picker/file_picker.dart';
-import 'chat_list_screen.dart';
 
 class WebLoginScreen extends StatefulWidget {
   final String url;
@@ -31,6 +29,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     with SingleTickerProviderStateMixin {
   late final WebViewController _controller;
   Timer? _authCheckTimer;
+  Map<String, dynamic>? _currentUser; // track logged-in user
   String? _activeUserId; // track logged-in user ID
   bool _isLoading = true; // 👈 track WebView loading state
   bool _isFabExpanded = false; // Track FAB expansion state
@@ -60,6 +59,14 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     },
   ];
 
+  /// Filter out Invoice for Umm Al Qwain ("umalkam") branch (101)
+  List<Map<String, dynamic>> get _availableWebsites {
+    if (AuthService.isUmmAlQwain(_currentUser)) {
+      return _websites.where((site) => site['name'] != 'Invoice').toList();
+    }
+    return _websites;
+  }
+
   /// 🔔 Helper to log + toast
   void _logToast(String message) {
     debugPrint("[WebLoginScreen] $message");
@@ -71,7 +78,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     super.initState();
     _currentUrl = widget.url; // Initialize with the starting URL
     AuthService.setLastOpenedWebsite(widget.url);
-    
+
     // Preload auth session from SharedPreferences
     AuthService.getAuthJson().then((val) {
       if (mounted) {
@@ -79,8 +86,13 @@ class _WebLoginScreenState extends State<WebLoginScreen>
       }
     });
     AuthService.getCurrentUser().then((user) {
-      if (mounted && user != null && user['id'] != null) {
-        _activeUserId = user['id'].toString();
+      if (mounted) {
+        setState(() {
+          _currentUser = user;
+          if (user != null && user['id'] != null) {
+            _activeUserId = user['id'].toString();
+          }
+        });
       }
     });
 
@@ -113,14 +125,12 @@ class _WebLoginScreenState extends State<WebLoginScreen>
           onNavigationRequest: (NavigationRequest request) {
             final url = request.url;
             // Log all navigation requests for debugging
-            debugPrint(
-                "[WebLoginScreen] 🔗 Navigation request: $url");
+            debugPrint("[WebLoginScreen] 🔗 Navigation request: $url");
 
             // Detect download links by file extension or content-disposition
             // Also check for blob: URLs which indicate generated files
             if (url.startsWith('blob:')) {
-              debugPrint(
-                  "[WebLoginScreen] 📥 Blob download detected: $url");
+              debugPrint("[WebLoginScreen] 📥 Blob download detected: $url");
               _logToast("📥 Downloading generated file...");
               _handleDownload(url);
               return NavigationDecision.prevent;
@@ -128,7 +138,8 @@ class _WebLoginScreenState extends State<WebLoginScreen>
 
             // Handle data: URIs (often used for generated PDFs)
             if (url.startsWith('data:')) {
-              debugPrint("[WebLoginScreen] 📥 Data URI detected: ${url.substring(0, min<int>(url.length, 50))}...");
+              debugPrint(
+                  "[WebLoginScreen] 📥 Data URI detected: ${url.substring(0, min<int>(url.length, 50))}...");
               _handleBlobData(url);
               return NavigationDecision.prevent;
             }
@@ -446,7 +457,8 @@ class _WebLoginScreenState extends State<WebLoginScreen>
         _activeUserId = null;
         AuthService.logout().then((_) {
           if (mounted) {
-            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+            Navigator.of(context)
+                .pushNamedAndRemoveUntil('/login', (route) => false);
           }
         });
         break;
@@ -485,11 +497,23 @@ class _WebLoginScreenState extends State<WebLoginScreen>
 
             if (params.acceptTypes.isNotEmpty) {
               final acceptTypesStr = params.acceptTypes.join(',').toLowerCase();
-              
-              bool hasImage = acceptTypesStr.contains('image/') || acceptTypesStr.contains('.jpg') || acceptTypesStr.contains('.png') || acceptTypesStr.contains('.jpeg');
-              bool hasVideo = acceptTypesStr.contains('video/') || acceptTypesStr.contains('.mp4') || acceptTypesStr.contains('.mov');
-              bool hasAudio = acceptTypesStr.contains('audio/') || acceptTypesStr.contains('.mp3') || acceptTypesStr.contains('.wav');
-              bool hasDoc = acceptTypesStr.contains('application/') || acceptTypesStr.contains('text/') || acceptTypesStr.contains('.pdf') || acceptTypesStr.contains('.doc') || acceptTypesStr.contains('.csv') || acceptTypesStr.contains('.xls');
+
+              bool hasImage = acceptTypesStr.contains('image/') ||
+                  acceptTypesStr.contains('.jpg') ||
+                  acceptTypesStr.contains('.png') ||
+                  acceptTypesStr.contains('.jpeg');
+              bool hasVideo = acceptTypesStr.contains('video/') ||
+                  acceptTypesStr.contains('.mp4') ||
+                  acceptTypesStr.contains('.mov');
+              bool hasAudio = acceptTypesStr.contains('audio/') ||
+                  acceptTypesStr.contains('.mp3') ||
+                  acceptTypesStr.contains('.wav');
+              bool hasDoc = acceptTypesStr.contains('application/') ||
+                  acceptTypesStr.contains('text/') ||
+                  acceptTypesStr.contains('.pdf') ||
+                  acceptTypesStr.contains('.doc') ||
+                  acceptTypesStr.contains('.csv') ||
+                  acceptTypesStr.contains('.xls');
 
               if (hasDoc) {
                 fileType = FileType.any;
@@ -515,8 +539,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                   .where((file) => file.path != null)
                   .map((file) => Uri.file(file.path!).toString())
                   .toList();
-              debugPrint(
-                  "[WebLoginScreen] ✅ Files selected: $paths");
+              debugPrint("[WebLoginScreen] ✅ Files selected: $paths");
               return paths;
             }
 
@@ -750,9 +773,8 @@ class _WebLoginScreenState extends State<WebLoginScreen>
       // 3. If base64 is present: decode base64 string into bytes using base64Decode()
       if (base64Data != null && base64Data.trim().isNotEmpty) {
         _logToast("📥 Processing file data...");
-        final String cleanBase64 = base64Data.contains(',')
-            ? base64Data.split(',').last
-            : base64Data;
+        final String cleanBase64 =
+            base64Data.contains(',') ? base64Data.split(',').last : base64Data;
         bytes = base64Decode(cleanBase64.replaceAll(RegExp(r'\s+'), ''));
       }
       // 4. If url is present: download bytes using http.get(Uri.parse(url))
@@ -782,7 +804,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
         throw Exception("Payload contains neither base64 data nor url");
       }
 
-      if (bytes == null || bytes.isEmpty) {
+      if (bytes.isEmpty) {
         throw Exception("Downloaded file is empty (0 bytes)");
       }
 
@@ -1000,17 +1022,20 @@ class _WebLoginScreenState extends State<WebLoginScreen>
             extension = "csv";
           } else if (mimeType.contains('text/plain')) {
             extension = "txt";
-          } else if (mimeType.contains('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
+          } else if (mimeType.contains(
+              'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')) {
             extension = "xlsx";
           } else if (mimeType.contains('application/vnd.ms-excel')) {
             extension = "xls";
-          } else if (mimeType.contains('application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
+          } else if (mimeType.contains(
+              'application/vnd.openxmlformats-officedocument.wordprocessingml.document')) {
             extension = "docx";
           }
         } catch (_) {}
       }
 
-      String filename = "download_${DateTime.now().millisecondsSinceEpoch}.$extension";
+      String filename =
+          "download_${DateTime.now().millisecondsSinceEpoch}.$extension";
 
       // Try to parse as JSON
       if (message.trim().startsWith('{')) {
@@ -1116,13 +1141,17 @@ class _WebLoginScreenState extends State<WebLoginScreen>
         }
       } else {
         // If the user was logged in previously and web app cleared auth (logout), detect logout
-        if (_activeUserId != null && _activeUserId!.isNotEmpty && (result.toString() == 'null' || result.toString().isEmpty)) {
-          debugPrint("[WebLoginScreen] 🚪 Web logout detected from WebView for user: $_activeUserId");
+        if (_activeUserId != null &&
+            _activeUserId!.isNotEmpty &&
+            (result.toString() == 'null' || result.toString().isEmpty)) {
+          debugPrint(
+              "[WebLoginScreen] 🚪 Web logout detected from WebView for user: $_activeUserId");
           _authCheckTimer?.cancel();
           _activeUserId = null;
           await AuthService.logout();
           if (mounted) {
-            Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+            Navigator.of(context)
+                .pushNamedAndRemoveUntil('/login', (route) => false);
           }
         }
       }
@@ -1176,7 +1205,8 @@ class _WebLoginScreenState extends State<WebLoginScreen>
   Future<void> _switchWebsite(String url) async {
     String targetUrl = url;
     final user = await AuthService.getCurrentUser();
-    if (AuthService.isCustomer(user) && url.contains('delivery.megapaints.org')) {
+    if (AuthService.isCustomer(user) &&
+        url.contains('delivery.megapaints.org')) {
       targetUrl = 'https://delivery.megapaints.org/#/customer-formulas';
     }
     await AuthService.setLastOpenedWebsite(targetUrl);
@@ -1208,106 +1238,125 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     final screenSize = MediaQuery.of(context).size;
     const fabSize = 56.0;
 
-    return PopScope(
-      canPop: false, // Prevents Android back button/gestures from popping the screen
-      onPopInvokedWithResult: (didPop, result) async {
-        if (didPop) return;
-        await _onSystemBackPressed();
-      },
-      child: Scaffold(
-        backgroundColor: const Color(0xFF0D1117),
-        body: SafeArea(
-          child: Column(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF0F172A),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF0D1117),
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+      child: PopScope(
+        canPop:
+            false, // Prevents Android back button/gestures from popping the screen
+        onPopInvokedWithResult: (didPop, result) async {
+          if (didPop) return;
+          await _onSystemBackPressed();
+        },
+        child: Scaffold(
+          backgroundColor: const Color(0xFF0D1117),
+          body: Column(
             children: [
-              // Top Portal Control Bar
-              _buildTopPortalBar(),
+              // Top Portal Control Bar with status bar background matching top bar
+              Container(
+                color: const Color(0xFF0F172A),
+                child: SafeArea(
+                  bottom: false,
+                  child: _buildTopPortalBar(),
+                ),
+              ),
 
               // WebView Content + Overlays
               Expanded(
-                child: Stack(
-                  children: [
-                    WebViewWidget(controller: _controller),
+                child: SafeArea(
+                  top: false,
+                  child: Stack(
+                    children: [
+                      WebViewWidget(controller: _controller),
 
-                    // Modern Dark Loading Overlay
-                    if (_isLoading) _buildLoadingOverlay(),
+                      // Modern Dark Loading Overlay
+                      if (_isLoading) _buildLoadingOverlay(),
 
-                    // Overlay when FAB is expanded
-                    if (_isFabExpanded)
-                      GestureDetector(
-                        onTap: _toggleFab,
-                        child: Container(
-                          color: Colors.black.withOpacity(0.5),
+                      // Overlay when FAB is expanded
+                      if (_isFabExpanded)
+                        GestureDetector(
+                          onTap: _toggleFab,
+                          child: Container(
+                            color: Colors.black.withOpacity(0.5),
+                          ),
                         ),
-                      ),
 
-                    // Draggable Clean Floating Switcher Button
-                    Positioned(
-                      right: _fabX,
-                      bottom: _fabY,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          // Switcher menu card (shown when expanded)
-                          if (_isFabExpanded) _buildWebsiteOptionsMenu(),
+                      // Draggable Clean Floating Switcher Button
+                      Positioned(
+                        right: _fabX,
+                        bottom: _fabY,
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            // Switcher menu card (shown when expanded)
+                            if (_isFabExpanded) _buildWebsiteOptionsMenu(),
 
-                          // Draggable Main FAB (Compact, Professional Dark Slate)
-                          GestureDetector(
-                            onPanUpdate: (details) {
-                              setState(() {
-                                _fabX -= details.delta.dx;
-                                _fabY -= details.delta.dy;
+                            // Draggable Main FAB (Compact, Professional Dark Slate)
+                            GestureDetector(
+                              onPanUpdate: (details) {
+                                setState(() {
+                                  _fabX -= details.delta.dx;
+                                  _fabY -= details.delta.dy;
 
-                                _fabX = _fabX.clamp(
-                                    0, screenSize.width - fabSize - 16);
-                                _fabY = _fabY.clamp(
-                                    0, screenSize.height - fabSize - 100);
-                              });
-                            },
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: _toggleFab,
-                                borderRadius: BorderRadius.circular(24),
-                                child: Container(
-                                  width: 48,
-                                  height: 48,
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF1E293B),
-                                    borderRadius: BorderRadius.circular(24),
-                                    border: Border.all(
-                                      color: const Color(0xFF334155),
-                                      width: 1.2,
-                                    ),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black.withOpacity(0.3),
-                                        blurRadius: 10,
-                                        offset: const Offset(0, 4),
+                                  _fabX = _fabX.clamp(
+                                      0, screenSize.width - fabSize - 16);
+                                  _fabY = _fabY.clamp(
+                                      0, screenSize.height - fabSize - 100);
+                                });
+                              },
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: _toggleFab,
+                                  borderRadius: BorderRadius.circular(24),
+                                  child: Container(
+                                    width: 48,
+                                    height: 48,
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E293B),
+                                      borderRadius: BorderRadius.circular(24),
+                                      border: Border.all(
+                                        color: const Color(0xFF334155),
+                                        width: 1.2,
                                       ),
-                                    ],
-                                  ),
-                                  child: Center(
-                                    child: AnimatedRotation(
-                                      turns: _isFabExpanded ? 0.125 : 0,
-                                      duration: const Duration(milliseconds: 200),
-                                      child: Icon(
-                                        _isFabExpanded
-                                            ? Icons.close_rounded
-                                            : Icons.swap_horiz_rounded,
-                                        color: Colors.white,
-                                        size: 22,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.3),
+                                          blurRadius: 10,
+                                          offset: const Offset(0, 4),
+                                        ),
+                                      ],
+                                    ),
+                                    child: Center(
+                                      child: AnimatedRotation(
+                                        turns: _isFabExpanded ? 0.125 : 0,
+                                        duration:
+                                            const Duration(milliseconds: 200),
+                                        child: Icon(
+                                          _isFabExpanded
+                                              ? Icons.close_rounded
+                                              : Icons.swap_horiz_rounded,
+                                          color: Colors.white,
+                                          size: 22,
+                                        ),
                                       ),
                                     ),
                                   ),
                                 ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],
@@ -1567,7 +1616,7 @@ class _WebLoginScreenState extends State<WebLoginScreen>
                 ),
               ),
             ),
-            ..._websites.map((site) {
+            ..._availableWebsites.map((site) {
               final isCurrentSite = _currentUrl.contains(
                 Uri.parse(site['url'] as String).host,
               );
@@ -1624,4 +1673,3 @@ class _WebLoginScreenState extends State<WebLoginScreen>
     );
   }
 }
-

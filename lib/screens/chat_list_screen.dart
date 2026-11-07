@@ -109,7 +109,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
       final difference = now.difference(dt);
 
       if (difference.inDays == 0) {
-        final hour = dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
+        final hour =
+            dt.hour > 12 ? dt.hour - 12 : (dt.hour == 0 ? 12 : dt.hour);
         final period = dt.hour >= 12 ? 'PM' : 'AM';
         final min = dt.minute.toString().padLeft(2, '0');
         return '$hour:$min $period';
@@ -180,9 +181,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
       if (_searchQuery.isEmpty) return true;
       final title = (chat['title'] ?? '').toString().toLowerCase();
       final orderNo = (chat['orderNumber'] ?? '').toString().toLowerCase();
-      final lastMsg = (chat['lastMessage']?['text'] ?? '').toString().toLowerCase();
+      final lastMsg =
+          (chat['lastMessage']?['text'] ?? '').toString().toLowerCase();
       final query = _searchQuery.toLowerCase();
-      return title.contains(query) || orderNo.contains(query) || lastMsg.contains(query);
+      return title.contains(query) ||
+          orderNo.contains(query) ||
+          lastMsg.contains(query);
     }).toList();
 
     return Scaffold(
@@ -208,7 +212,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 child: _isLoadingInitial
                     ? const Center(
                         child: CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
                         ),
                       )
                     : filteredChats.isEmpty
@@ -218,9 +223,12 @@ class _ChatListScreenState extends State<ChatListScreen> {
                             physics: const AlwaysScrollableScrollPhysics(
                               parent: BouncingScrollPhysics(),
                             ),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                            itemCount: filteredChats.length + (_isLoadingMore ? 1 : 0),
-                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 12),
+                            itemCount:
+                                filteredChats.length + (_isLoadingMore ? 1 : 0),
+                            separatorBuilder: (_, __) =>
+                                const SizedBox(height: 10),
                             itemBuilder: (context, index) {
                               if (index == filteredChats.length) {
                                 return const Padding(
@@ -232,7 +240,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
                                         valueColor:
-                                            AlwaysStoppedAnimation<Color>(Color(0xFF94A3B8)),
+                                            AlwaysStoppedAnimation<Color>(
+                                                Color(0xFF94A3B8)),
                                       ),
                                     ),
                                   ),
@@ -270,7 +279,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: Colors.white, size: 18),
             onPressed: () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: 4),
@@ -285,7 +295,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF94A3B8), size: 21),
+            icon: const Icon(Icons.refresh_rounded,
+                color: Color(0xFF94A3B8), size: 21),
             tooltip: 'Refresh',
             onPressed: () => _loadChats(refresh: true),
           ),
@@ -306,7 +317,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
         ),
         child: Row(
           children: [
-            const Icon(Icons.search_rounded, color: Color(0xFF94A3B8), size: 20),
+            const Icon(Icons.search_rounded,
+                color: Color(0xFF94A3B8), size: 20),
             const SizedBox(width: 10),
             Expanded(
               child: TextField(
@@ -330,7 +342,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                   _searchController.clear();
                   setState(() => _searchQuery = '');
                 },
-                child: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8), size: 18),
+                child: const Icon(Icons.close_rounded,
+                    color: Color(0xFF94A3B8), size: 18),
               ),
           ],
         ),
@@ -364,7 +377,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
           color: isSelected ? const Color(0xFF2563EB) : const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(10),
           border: Border.all(
-            color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF334155),
+            color:
+                isSelected ? const Color(0xFF3B82F6) : const Color(0xFF334155),
           ),
         ),
         child: Text(
@@ -384,10 +398,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
     final title = chat['title'] ?? (isOrder ? 'Order Chat' : 'Direct Message');
     final lastMsg = chat['lastMessage'];
     final lastText = lastMsg?['text'] ?? 'No messages yet';
-    final lastTime = _formatTimestamp(lastMsg?['createdAt'] ?? chat['updatedAt']);
+    final lastTime =
+        _formatTimestamp(lastMsg?['createdAt'] ?? chat['updatedAt']);
 
     final unreadCounts = chat['unreadCounts'] as Map<String, dynamic>?;
-    final unread = _currentUserId != null ? (unreadCounts?[_currentUserId] ?? 0) as int : 0;
+    final unread = _currentUserId != null
+        ? (unreadCounts?[_currentUserId] ?? 0) as int
+        : 0;
 
     return Material(
       color: Colors.transparent,
@@ -400,7 +417,9 @@ class _ChatListScreenState extends State<ChatListScreen> {
             color: const Color(0xFF1E293B),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
-              color: unread > 0 ? const Color(0xFF3B82F6).withOpacity(0.5) : const Color(0xFF334155),
+              color: unread > 0
+                  ? const Color(0xFF3B82F6).withOpacity(0.5)
+                  : const Color(0xFF334155),
             ),
           ),
           child: Row(
@@ -410,14 +429,20 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 width: 46,
                 height: 46,
                 decoration: BoxDecoration(
-                  color: isOrder ? const Color(0xFF0F172A) : const Color(0xFF2563EB),
+                  color: isOrder
+                      ? const Color(0xFF0F172A)
+                      : const Color(0xFF2563EB),
                   borderRadius: BorderRadius.circular(14),
                   border: Border.all(
-                    color: isOrder ? const Color(0xFF334155) : const Color(0xFF1D4ED8),
+                    color: isOrder
+                        ? const Color(0xFF334155)
+                        : const Color(0xFF1D4ED8),
                   ),
                 ),
                 child: Icon(
-                  isOrder ? Icons.local_shipping_outlined : Icons.person_outline_rounded,
+                  isOrder
+                      ? Icons.local_shipping_outlined
+                      : Icons.person_outline_rounded,
                   color: Colors.white,
                   size: 22,
                 ),
@@ -448,9 +473,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           Text(
                             lastTime,
                             style: TextStyle(
-                              color: unread > 0 ? const Color(0xFF38BDF8) : const Color(0xFF64748B),
+                              color: unread > 0
+                                  ? const Color(0xFF38BDF8)
+                                  : const Color(0xFF64748B),
                               fontSize: 11,
-                              fontWeight: unread > 0 ? FontWeight.w600 : FontWeight.normal,
+                              fontWeight: unread > 0
+                                  ? FontWeight.w600
+                                  : FontWeight.normal,
                             ),
                           ),
                         ],
@@ -463,9 +492,13 @@ class _ChatListScreenState extends State<ChatListScreen> {
                           child: Text(
                             lastText,
                             style: TextStyle(
-                              color: unread > 0 ? const Color(0xFFE2E8F0) : const Color(0xFF94A3B8),
+                              color: unread > 0
+                                  ? const Color(0xFFE2E8F0)
+                                  : const Color(0xFF94A3B8),
                               fontSize: 13,
-                              fontWeight: unread > 0 ? FontWeight.w500 : FontWeight.normal,
+                              fontWeight: unread > 0
+                                  ? FontWeight.w500
+                                  : FontWeight.normal,
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -474,7 +507,8 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         if (unread > 0) ...[
                           const SizedBox(width: 8),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 3),
                             decoration: BoxDecoration(
                               color: const Color(0xFF2563EB),
                               borderRadius: BorderRadius.circular(10),
@@ -572,7 +606,9 @@ class _NewChatSheetState extends State<_NewChatSheet> {
     final users = await ChatService.getChatUsers();
     if (mounted) {
       setState(() {
-        _users = users.where((u) => u['id']?.toString() != widget.currentUserId).toList();
+        _users = users
+            .where((u) => u['id']?.toString() != widget.currentUserId)
+            .toList();
         _isLoadingUsers = false;
       });
     }
@@ -581,7 +617,8 @@ class _NewChatSheetState extends State<_NewChatSheet> {
   Future<void> _startDirectChat(Map<String, dynamic> colleague) async {
     setState(() => _isCreating = true);
     final colleagueId = (colleague['id'] ?? '').toString();
-    final colleagueName = (colleague['name'] ?? colleague['username'] ?? 'Colleague').toString();
+    final colleagueName =
+        (colleague['name'] ?? colleague['username'] ?? 'Colleague').toString();
     final colleagueRole = (colleague['role'] ?? 'Staff').toString();
 
     final result = await ChatService.createOrGetChat(
@@ -653,7 +690,8 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                   ),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.close_rounded, color: Color(0xFF94A3B8)),
+                  icon:
+                      const Icon(Icons.close_rounded, color: Color(0xFF94A3B8)),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -685,10 +723,12 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                       Expanded(
                         child: TextField(
                           controller: _orderNumberController,
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: const TextStyle(
+                              color: Colors.white, fontSize: 13),
                           decoration: const InputDecoration(
                             hintText: 'Enter Order # (e.g. 1042)',
-                            hintStyle: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                            hintStyle: TextStyle(
+                                color: Color(0xFF64748B), fontSize: 13),
                             border: InputBorder.none,
                             isDense: true,
                           ),
@@ -698,11 +738,14 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2563EB),
                           foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 8),
+                          shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10)),
                         ),
                         onPressed: _isCreating ? null : _startOrderChat,
-                        child: const Text('Open Room', style: TextStyle(fontSize: 12)),
+                        child: const Text('Open Room',
+                            style: TextStyle(fontSize: 12)),
                       ),
                     ],
                   ),
@@ -727,44 +770,62 @@ class _NewChatSheetState extends State<_NewChatSheet> {
               child: _isLoadingUsers
                   ? const Center(
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
                       ),
                     )
                   : _users.isEmpty
                       ? const Center(
                           child: Text(
                             'No team members found',
-                            style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                            style: TextStyle(
+                                color: Color(0xFF64748B), fontSize: 13),
                           ),
                         )
                       : ListView.separated(
                           shrinkWrap: true,
                           itemCount: _users.length,
-                          separatorBuilder: (_, __) => const Divider(color: Color(0xFF334155), height: 1),
+                          separatorBuilder: (_, __) => const Divider(
+                              color: Color(0xFF334155), height: 1),
                           itemBuilder: (context, index) {
                             final user = _users[index];
-                            final name = (user['name'] ?? user['username'] ?? 'Staff').toString();
-                            final role = (user['role'] ?? 'Colleague').toString();
+                            final name =
+                                (user['name'] ?? user['username'] ?? 'Staff')
+                                    .toString();
+                            final role =
+                                (user['role'] ?? 'Colleague').toString();
                             return ListTile(
-                              contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                              contentPadding:
+                                  const EdgeInsets.symmetric(vertical: 4),
                               leading: CircleAvatar(
                                 radius: 18,
                                 backgroundColor: const Color(0xFF2563EB),
                                 child: Text(
                                   name.isNotEmpty ? name[0].toUpperCase() : 'U',
-                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.bold),
                                 ),
                               ),
                               title: Text(
                                 name,
-                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w500),
                               ),
                               subtitle: Text(
                                 role,
-                                style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                                style: const TextStyle(
+                                    color: Color(0xFF94A3B8), fontSize: 12),
                               ),
-                              trailing: const Icon(Icons.chat_bubble_outline_rounded, color: Color(0xFF38BDF8), size: 18),
-                              onTap: _isCreating ? null : () => _startDirectChat(user),
+                              trailing: const Icon(
+                                  Icons.chat_bubble_outline_rounded,
+                                  color: Color(0xFF38BDF8),
+                                  size: 18),
+                              onTap: _isCreating
+                                  ? null
+                                  : () => _startDirectChat(user),
                             );
                           },
                         ),

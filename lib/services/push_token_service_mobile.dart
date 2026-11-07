@@ -26,9 +26,11 @@ class PushTokenService {
       );
 
       if (response.statusCode == 200) {
-        debugPrint("[PushTokenService] ✅ Token registered successfully for user: $userId");
+        debugPrint(
+            "[PushTokenService] ✅ Token registered successfully for user: $userId");
       } else {
-        debugPrint("[PushTokenService] ⚠️ Server error registering token: ${response.body}");
+        debugPrint(
+            "[PushTokenService] ⚠️ Server error registering token: ${response.body}");
       }
     } catch (e) {
       debugPrint("[PushTokenService] ❌ Error registering token: $e");
@@ -38,7 +40,8 @@ class PushTokenService {
   /// Listen for FCM token refresh
   static void listenTokenRefresh(String userId) {
     _refreshSubscription?.cancel();
-    _refreshSubscription = FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
+    _refreshSubscription =
+        FirebaseMessaging.instance.onTokenRefresh.listen((newToken) {
       registerToken(userId);
     });
   }
@@ -59,7 +62,8 @@ class PushTokenService {
             "token": token,
           }),
         );
-        debugPrint("[PushTokenService] Remove token response: ${response.statusCode}");
+        debugPrint(
+            "[PushTokenService] Remove token response: ${response.statusCode}");
       } else if (userId.isNotEmpty) {
         await http.post(
           Uri.parse("${AppConstants.apiBaseUrl}/removeToken"),

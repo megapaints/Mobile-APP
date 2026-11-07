@@ -65,11 +65,14 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final newestTime = _messages.first['createdAt']?.toString();
     if (newestTime == null || newestTime.isEmpty) return;
 
-    final result = await ChatService.getNewerMessages(widget.chatId, after: newestTime);
+    final result =
+        await ChatService.getNewerMessages(widget.chatId, after: newestTime);
     if (result['success'] == true && mounted) {
       final newMsgs = List<Map<String, dynamic>>.from(result['messages'] ?? []);
       if (newMsgs.isNotEmpty) {
-        newMsgs.sort((a, b) => (b['createdAt'] ?? '').toString().compareTo((a['createdAt'] ?? '').toString()));
+        newMsgs.sort((a, b) => (b['createdAt'] ?? '')
+            .toString()
+            .compareTo((a['createdAt'] ?? '').toString()));
         setState(() {
           for (final msg in newMsgs.reversed) {
             final id = msg['id'];
@@ -88,7 +91,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     if (mounted && user != null) {
       setState(() {
         _currentUserId = (user['id'] ?? '').toString();
-        _currentUserName = (user['name'] ?? user['username'] ?? 'User').toString();
+        _currentUserName =
+            (user['name'] ?? user['username'] ?? 'User').toString();
       });
     }
   }
@@ -98,9 +102,12 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     final result = await ChatService.getChatMessages(widget.chatId, limit: 20);
 
     if (mounted) {
-      final List<Map<String, dynamic>> msgs = List<Map<String, dynamic>>.from(result['messages'] ?? []);
+      final List<Map<String, dynamic>> msgs =
+          List<Map<String, dynamic>>.from(result['messages'] ?? []);
       // Ensure messages are sorted descending (newest first at index 0 for reversed ListView)
-      msgs.sort((a, b) => (b['createdAt'] ?? '').toString().compareTo((a['createdAt'] ?? '').toString()));
+      msgs.sort((a, b) => (b['createdAt'] ?? '')
+          .toString()
+          .compareTo((a['createdAt'] ?? '').toString()));
 
       setState(() {
         _messages.clear();
@@ -114,7 +121,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
 
   void _onScroll() {
     // In a reversed ListView, maxScrollExtent represents the oldest messages at the top
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 80) {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 80) {
       if (!_isLoadingOlder && _hasMoreOlder && _oldestCursor != null) {
         _loadOlderMessages();
       }
@@ -132,8 +140,11 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
     );
 
     if (mounted) {
-      final List<Map<String, dynamic>> older = List<Map<String, dynamic>>.from(result['messages'] ?? []);
-      older.sort((a, b) => (b['createdAt'] ?? '').toString().compareTo((a['createdAt'] ?? '').toString()));
+      final List<Map<String, dynamic>> older =
+          List<Map<String, dynamic>>.from(result['messages'] ?? []);
+      older.sort((a, b) => (b['createdAt'] ?? '')
+          .toString()
+          .compareTo((a['createdAt'] ?? '').toString()));
 
       setState(() {
         _messages.addAll(older);
@@ -237,7 +248,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
               child: _isLoadingInitial
                   ? const Center(
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Color(0xFF2563EB)),
                       ),
                     )
                   : _messages.isEmpty
@@ -246,8 +258,10 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                           controller: _scrollController,
                           reverse: true, // Pinned to bottom, 0 is newest
                           physics: const BouncingScrollPhysics(),
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          itemCount: _messages.length + (_isLoadingOlder ? 1 : 0),
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 16, vertical: 12),
+                          itemCount:
+                              _messages.length + (_isLoadingOlder ? 1 : 0),
                           itemBuilder: (context, index) {
                             if (index == _messages.length) {
                               return const Padding(
@@ -258,7 +272,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                                     height: 18,
                                     child: CircularProgressIndicator(
                                       strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF94A3B8)),
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                          Color(0xFF94A3B8)),
                                     ),
                                   ),
                                 ),
@@ -290,20 +305,25 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
+            icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                color: Colors.white, size: 18),
             onPressed: () => Navigator.of(context).pop(),
           ),
           Container(
             padding: const EdgeInsets.all(9),
             decoration: BoxDecoration(
-              color: isOrder ? const Color(0xFF0F172A) : const Color(0xFF2563EB),
+              color:
+                  isOrder ? const Color(0xFF0F172A) : const Color(0xFF2563EB),
               borderRadius: BorderRadius.circular(12),
               border: Border.all(
-                color: isOrder ? const Color(0xFF334155) : const Color(0xFF1D4ED8),
+                color:
+                    isOrder ? const Color(0xFF334155) : const Color(0xFF1D4ED8),
               ),
             ),
             child: Icon(
-              isOrder ? Icons.local_shipping_outlined : Icons.person_outline_rounded,
+              isOrder
+                  ? Icons.local_shipping_outlined
+                  : Icons.person_outline_rounded,
               color: Colors.white,
               size: 20,
             ),
@@ -338,7 +358,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF94A3B8), size: 20),
+            icon: const Icon(Icons.refresh_rounded,
+                color: Color(0xFF94A3B8), size: 20),
             tooltip: 'Refresh',
             onPressed: _loadInitialMessages,
           ),
@@ -436,7 +457,8 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
           ),
         ),
         child: Column(
-          crossAxisAlignment: isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+          crossAxisAlignment:
+              isMe ? CrossAxisAlignment.end : CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             if (!isMe && (msg['senderName'] ?? '').isNotEmpty) ...[
@@ -465,14 +487,18 @@ class _ChatDetailScreenState extends State<ChatDetailScreen> {
                 Text(
                   timeStr,
                   style: TextStyle(
-                    color: isMe ? Colors.white.withOpacity(0.7) : const Color(0xFF94A3B8),
+                    color: isMe
+                        ? Colors.white.withOpacity(0.7)
+                        : const Color(0xFF94A3B8),
                     fontSize: 10,
                   ),
                 ),
                 if (isMe) ...[
                   const SizedBox(width: 4),
                   Icon(
-                    isSending ? Icons.access_time_rounded : Icons.done_all_rounded,
+                    isSending
+                        ? Icons.access_time_rounded
+                        : Icons.done_all_rounded,
                     size: 13,
                     color: isSending ? Colors.white70 : const Color(0xFF67E8F9),
                   ),

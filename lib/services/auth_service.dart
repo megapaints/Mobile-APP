@@ -60,9 +60,10 @@ class AuthService {
           'user': userData,
         };
       } else {
-        final errorMsg = decoded is Map<String, dynamic> && decoded['error'] != null
-            ? decoded['error'].toString()
-            : 'Invalid username or password';
+        final errorMsg =
+            decoded is Map<String, dynamic> && decoded['error'] != null
+                ? decoded['error'].toString()
+                : 'Invalid username or password';
         return {
           'success': false,
           'error': errorMsg,
@@ -80,7 +81,8 @@ class AuthService {
   /// Check if user map represents a customer
   static bool isCustomer(Map<String, dynamic>? user) {
     if (user == null) return false;
-    if (user['customerId'] != null && user['customerId'].toString().isNotEmpty) {
+    if (user['customerId'] != null &&
+        user['customerId'].toString().isNotEmpty) {
       return true;
     }
     if (user['designationId'] == 106 || user['designationId'] == '106') {
@@ -97,6 +99,38 @@ class AuthService {
     if (desName == 'customer') {
       return true;
     }
+    return false;
+  }
+
+  /// Check if user belongs to Umm Al Qwain ("umalkam") branch (branchId: 101)
+  static bool isUmmAlQwain(Map<String, dynamic>? user) {
+    if (user == null) return false;
+
+    final branchId = user['branchId']?.toString();
+    if (branchId == '101') return true;
+
+    final branch = user['branch'];
+    if (branch is Map && branch['id']?.toString() == '101') {
+      return true;
+    }
+
+    final bName = (user['branchName'] ??
+            (branch is Map ? branch['name'] : branch) ??
+            user['branch'] ??
+            '')
+        .toString()
+        .toLowerCase();
+
+    if (bName.contains('umm') ||
+        bName.contains('umalkam') ||
+        bName.contains('quwain') ||
+        bName.contains('qaiwain') ||
+        bName.contains('qwain') ||
+        bName.contains('victoria') ||
+        bName.contains('101')) {
+      return true;
+    }
+
     return false;
   }
 
@@ -214,4 +248,3 @@ class AuthService {
     await prefs.remove(_lastWebsiteKey);
   }
 }
-

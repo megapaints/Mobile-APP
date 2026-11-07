@@ -1,12 +1,12 @@
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'firebase_options.dart';
 import 'screens/home_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/permissions_screen.dart';
-import 'screens/web_login_screen.dart';
 import 'services/auth_service.dart';
 import 'services/chat_service.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -29,6 +29,17 @@ void main() async {
   await flutterLocalNotificationsPlugin.initialize(initializationSettings);
   setupForegroundNotification();
 
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Color(0xFF0F172A),
+      statusBarIconBrightness: Brightness.light,
+      statusBarBrightness: Brightness.dark,
+      systemNavigationBarColor: Color(0xFF0F172A),
+      systemNavigationBarIconBrightness: Brightness.light,
+      systemNavigationBarDividerColor: Colors.transparent,
+    ),
+  );
+
   runApp(const MyApp());
 }
 
@@ -42,8 +53,11 @@ void setupForegroundNotification() {
 
       // 1. Never show notification for messages sent by self
       final senderId = data['senderId']?.toString();
-      final currentUserId = (await AuthService.getCurrentUser())?['id']?.toString();
-      if (senderId != null && currentUserId != null && senderId == currentUserId) {
+      final currentUserId =
+          (await AuthService.getCurrentUser())?['id']?.toString();
+      if (senderId != null &&
+          currentUserId != null &&
+          senderId == currentUserId) {
         return;
       }
 
@@ -104,7 +118,17 @@ class MyApp extends StatelessWidget {
       debugShowCheckedModeBanner: false,
       title: "Mega Paints",
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        scaffoldBackgroundColor: const Color(0xFF0F172A),
+        appBarTheme: const AppBarTheme(
+          systemOverlayStyle: SystemUiOverlayStyle(
+            statusBarColor: Color(0xFF0F172A),
+            statusBarIconBrightness: Brightness.light,
+            statusBarBrightness: Brightness.dark,
+            systemNavigationBarColor: Color(0xFF0F172A),
+            systemNavigationBarIconBrightness: Brightness.light,
+            systemNavigationBarDividerColor: Colors.transparent,
+          ),
+        ),
       ),
       home: const SplashScreen(),
       routes: {

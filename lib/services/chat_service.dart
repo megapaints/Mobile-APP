@@ -60,7 +60,9 @@ class ChatService {
       );
 
       final dynamic decoded = jsonDecode(response.body);
-      if (response.statusCode == 200 && decoded is Map<String, dynamic> && decoded['success'] == true) {
+      if (response.statusCode == 200 &&
+          decoded is Map<String, dynamic> &&
+          decoded['success'] == true) {
         final List<dynamic> rawChats = decoded['chats'] ?? [];
         final chats = List<Map<String, dynamic>>.from(rawChats);
 
@@ -78,14 +80,17 @@ class ChatService {
       } else {
         return {
           'success': false,
-          'error': decoded is Map ? decoded['error'] ?? 'Failed to load chats' : 'Failed to load chats',
+          'error': decoded is Map
+              ? decoded['error'] ?? 'Failed to load chats'
+              : 'Failed to load chats',
           'chats': cursor == null ? await getCachedChats() : [],
           'hasMore': false,
         };
       }
     } catch (e) {
       debugPrint("[ChatService] getChats error: $e");
-      final cached = cursor == null ? await getCachedChats() : <Map<String, dynamic>>[];
+      final cached =
+          cursor == null ? await getCachedChats() : <Map<String, dynamic>>[];
       return {
         'success': false,
         'error': 'Network error',
@@ -114,7 +119,9 @@ class ChatService {
       );
 
       final dynamic decoded = jsonDecode(response.body);
-      if (response.statusCode == 200 && decoded is Map<String, dynamic> && decoded['success'] == true) {
+      if (response.statusCode == 200 &&
+          decoded is Map<String, dynamic> &&
+          decoded['success'] == true) {
         final List<dynamic> rawMsgs = decoded['messages'] ?? [];
         final messages = List<Map<String, dynamic>>.from(rawMsgs);
 
@@ -132,14 +139,18 @@ class ChatService {
       } else {
         return {
           'success': false,
-          'error': decoded is Map ? decoded['error'] ?? 'Failed to load messages' : 'Failed to load messages',
+          'error': decoded is Map
+              ? decoded['error'] ?? 'Failed to load messages'
+              : 'Failed to load messages',
           'messages': before == null ? await getCachedMessages(chatId) : [],
           'hasMoreOlder': false,
         };
       }
     } catch (e) {
       debugPrint("[ChatService] getChatMessages error: $e");
-      final cached = before == null ? await getCachedMessages(chatId) : <Map<String, dynamic>>[];
+      final cached = before == null
+          ? await getCachedMessages(chatId)
+          : <Map<String, dynamic>>[];
       return {
         'success': false,
         'error': 'Network error',
@@ -166,7 +177,9 @@ class ChatService {
       );
 
       final dynamic decoded = jsonDecode(response.body);
-      if (response.statusCode == 200 && decoded is Map<String, dynamic> && decoded['success'] == true) {
+      if (response.statusCode == 200 &&
+          decoded is Map<String, dynamic> &&
+          decoded['success'] == true) {
         final List<dynamic> rawMsgs = decoded['messages'] ?? [];
         return {
           'success': true,
@@ -192,7 +205,8 @@ class ChatService {
     }
 
     final senderId = (currentUser['id'] ?? '').toString();
-    final senderName = (currentUser['name'] ?? currentUser['username'] ?? 'User').toString();
+    final senderName =
+        (currentUser['name'] ?? currentUser['username'] ?? 'User').toString();
 
     try {
       final url = Uri.parse("${AppConstants.apiBaseUrl}/sendMessage");
@@ -210,7 +224,9 @@ class ChatService {
       );
 
       final dynamic decoded = jsonDecode(response.body);
-      if (response.statusCode == 200 && decoded is Map<String, dynamic> && decoded['success'] == true) {
+      if (response.statusCode == 200 &&
+          decoded is Map<String, dynamic> &&
+          decoded['success'] == true) {
         return {
           'success': true,
           'message': decoded['message'],
@@ -218,7 +234,9 @@ class ChatService {
       } else {
         return {
           'success': false,
-          'error': decoded is Map ? decoded['error'] ?? 'Failed to send message' : 'Failed to send message',
+          'error': decoded is Map
+              ? decoded['error'] ?? 'Failed to send message'
+              : 'Failed to send message',
         };
       }
     } catch (e) {
@@ -247,12 +265,15 @@ class ChatService {
           if (orderNumber != null) "orderNumber": orderNumber,
           if (title != null) "title": title,
           "participants": participants,
-          if (participantDetails != null) "participantDetails": participantDetails,
+          if (participantDetails != null)
+            "participantDetails": participantDetails,
         }),
       );
 
       final dynamic decoded = jsonDecode(response.body);
-      if (response.statusCode == 200 && decoded is Map<String, dynamic> && decoded['success'] == true) {
+      if (response.statusCode == 200 &&
+          decoded is Map<String, dynamic> &&
+          decoded['success'] == true) {
         return {
           'success': true,
           'chat': decoded['chat'],
@@ -260,7 +281,9 @@ class ChatService {
       } else {
         return {
           'success': false,
-          'error': decoded is Map ? decoded['error'] ?? 'Failed to open chat' : 'Failed to open chat',
+          'error': decoded is Map
+              ? decoded['error'] ?? 'Failed to open chat'
+              : 'Failed to open chat',
         };
       }
     } catch (e) {
@@ -296,7 +319,9 @@ class ChatService {
       final url = Uri.parse("${AppConstants.apiBaseUrl}/getChatUsers");
       final response = await http.get(url);
       final dynamic decoded = jsonDecode(response.body);
-      if (response.statusCode == 200 && decoded is Map<String, dynamic> && decoded['success'] == true) {
+      if (response.statusCode == 200 &&
+          decoded is Map<String, dynamic> &&
+          decoded['success'] == true) {
         final List<dynamic> users = decoded['users'] ?? [];
         return List<Map<String, dynamic>>.from(users);
       }
@@ -329,7 +354,8 @@ class ChatService {
     } catch (_) {}
   }
 
-  static Future<List<Map<String, dynamic>>> getCachedMessages(String chatId) async {
+  static Future<List<Map<String, dynamic>>> getCachedMessages(
+      String chatId) async {
     try {
       final prefs = await SharedPreferences.getInstance();
       final str = prefs.getString('$_messagesCachePrefix$chatId');
@@ -343,10 +369,12 @@ class ChatService {
     return [];
   }
 
-  static Future<void> _cacheMessages(String chatId, List<Map<String, dynamic>> messages) async {
+  static Future<void> _cacheMessages(
+      String chatId, List<Map<String, dynamic>> messages) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('$_messagesCachePrefix$chatId', jsonEncode(messages));
+      await prefs.setString(
+          '$_messagesCachePrefix$chatId', jsonEncode(messages));
     } catch (_) {}
   }
 }

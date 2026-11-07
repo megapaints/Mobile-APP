@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'web_login_screen.dart';
-import 'chat_list_screen.dart';
 import '../services/auth_service.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:geolocator/geolocator.dart';
@@ -91,7 +91,8 @@ class _HomeScreenState extends State<HomeScreen>
     if (confirmed == true && mounted) {
       await AuthService.logout();
       if (mounted) {
-        Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
+        Navigator.of(context)
+            .pushNamedAndRemoveUntil('/login', (route) => false);
       }
     }
   }
@@ -123,8 +124,11 @@ class _HomeScreenState extends State<HomeScreen>
 
     final user = _currentUser ?? await AuthService.getCurrentUser();
     final isCust = AuthService.isCustomer(user);
+    final isUmmAlQwain = AuthService.isUmmAlQwain(user);
     String targetUrl = url;
-    if (isCust && url.contains('delivery.megapaints.org')) {
+    if (isUmmAlQwain && url.contains('invoice.megapaints.org')) {
+      targetUrl = 'https://delivery.megapaints.org';
+    } else if (isCust && url.contains('delivery.megapaints.org')) {
       targetUrl = 'https://delivery.megapaints.org/#/customer-formulas';
     }
 
@@ -192,13 +196,29 @@ class _HomeScreenState extends State<HomeScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0B0F17),
-      body: SafeArea(
-        child: Column(
+    final isUmmAlQwain = AuthService.isUmmAlQwain(_currentUser);
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Color(0xFF0F172A),
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: Color(0xFF0F172A),
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarDividerColor: Colors.transparent,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0B0F17),
+        body: Column(
           children: [
-            // Fixed Top Navbar with crisp partition divider
-            _buildTopNavbar(),
+            // Fixed Top Navbar with status bar background matching page navbar
+            Container(
+              color: const Color(0xFF0F172A),
+              child: SafeArea(
+                bottom: false,
+                child: _buildTopNavbar(),
+              ),
+            ),
 
             // Scrollable Content
             Expanded(
@@ -234,32 +254,44 @@ class _HomeScreenState extends State<HomeScreen>
                       _buildDeliveryHeroCard(),
                       const SizedBox(height: 14),
 
-                      // Bento Split Row: Inventory & Invoice
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildBentoCard(
-                              title: 'Inventory',
-                              subtitle: 'QR stock & materials',
-                              icon: Icons.inventory_2_outlined,
-                              accentColor: const Color(0xFF10B981),
-                              onTap: () => _navigateToWebView(
-                                  'https://qr-stock-management.megapaints.org'),
+                      // Bento Portals: Inventory & Invoice (Invoice hidden for Umm Al Qwain / branch 101)
+                      if (isUmmAlQwain) ...[
+                        _buildBentoCard(
+                          title: 'Inventory',
+                          subtitle: 'QR stock & materials',
+                          icon: Icons.inventory_2_outlined,
+                          accentColor: const Color(0xFF10B981),
+                          onTap: () => _navigateToWebView(
+                              'https://qr-stock-management.megapaints.org'),
+                          isFullWidth: true,
+                        ),
+                      ] else ...[
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildBentoCard(
+                                title: 'Inventory',
+                                subtitle: 'QR stock & materials',
+                                icon: Icons.inventory_2_outlined,
+                                accentColor: const Color(0xFF10B981),
+                                onTap: () => _navigateToWebView(
+                                    'https://qr-stock-management.megapaints.org'),
+                              ),
                             ),
-                          ),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: _buildBentoCard(
-                              title: 'Invoice',
-                              subtitle: 'Bills & statements',
-                              icon: Icons.receipt_long_outlined,
-                              accentColor: const Color(0xFFF59E0B),
-                              onTap: () => _navigateToWebView(
-                                  'https://invoice.megapaints.org'),
+                            const SizedBox(width: 14),
+                            Expanded(
+                              child: _buildBentoCard(
+                                title: 'Invoice',
+                                subtitle: 'Bills & statements',
+                                icon: Icons.receipt_long_outlined,
+                                accentColor: const Color(0xFFF59E0B),
+                                onTap: () => _navigateToWebView(
+                                    'https://invoice.megapaints.org'),
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 24),
                     ],
                   ),
@@ -267,8 +299,14 @@ class _HomeScreenState extends State<HomeScreen>
               ),
             ),
 
-            // Bottom Pinned Lancway Footer
-            _buildLancwayFooter(),
+            // Bottom Pinned Lancway Footer with bottom bar color matching footer
+            Container(
+              color: const Color(0xFF0F172A),
+              child: SafeArea(
+                top: false,
+                child: _buildLancwayFooter(),
+              ),
+            ),
           ],
         ),
       ),
@@ -362,11 +400,13 @@ class _HomeScreenState extends State<HomeScreen>
                 const SizedBox(height: 4),
                 // Designation badge pill
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
                     color: const Color(0xFF1E293B),
                     borderRadius: BorderRadius.circular(6),
-                    border: Border.all(color: const Color(0xFF334155), width: 0.8),
+                    border:
+                        Border.all(color: const Color(0xFF334155), width: 0.8),
                   ),
                   child: Text(
                     designation.toString().toUpperCase(),
@@ -526,6 +566,7 @@ class _HomeScreenState extends State<HomeScreen>
     required IconData icon,
     required Color accentColor,
     required VoidCallback onTap,
+    bool isFullWidth = false,
   }) {
     return Material(
       color: Colors.transparent,
@@ -533,6 +574,7 @@ class _HomeScreenState extends State<HomeScreen>
         onTap: onTap,
         borderRadius: BorderRadius.circular(20),
         child: Container(
+          width: isFullWidth ? double.infinity : null,
           padding: const EdgeInsets.all(18),
           decoration: BoxDecoration(
             color: const Color(0xFF1E293B),
@@ -542,43 +584,99 @@ class _HomeScreenState extends State<HomeScreen>
               width: 1.2,
             ),
           ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0F172A),
-                  borderRadius: BorderRadius.circular(14),
-                  border: Border.all(
-                    color: accentColor.withOpacity(0.3),
-                  ),
+          child: isFullWidth
+              ? Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: accentColor.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 24,
+                        color: accentColor,
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            subtitle,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Color(0xFF94A3B8),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Icon(
+                        Icons.arrow_forward_ios_rounded,
+                        size: 13,
+                        color: accentColor,
+                      ),
+                    ),
+                  ],
+                )
+              : Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F172A),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: accentColor.withOpacity(0.3),
+                        ),
+                      ),
+                      child: Icon(
+                        icon,
+                        size: 24,
+                        color: accentColor,
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF94A3B8),
+                      ),
+                    ),
+                  ],
                 ),
-                child: Icon(
-                  icon,
-                  size: 24,
-                  color: accentColor,
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 4),
-              Text(
-                subtitle,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Color(0xFF94A3B8),
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );
